@@ -66,7 +66,10 @@ var translations = map[string]map[string]string{
 		"calc_label_start":         "Start address",
 		"calc_label_end":           "Destination",
 		"calc_label_passengers":    "Number of passengers (1-8)",
-		"calc_help":                "Tab: next field | Enter: calculate | Esc: cancel",
+		"calc_mode":               "Route",
+		"calc_mode_fastest":       "Fastest",
+		"calc_mode_shortest":      "Shortest",
+		"calc_help":               "Tab: next field | r: route mode | Enter: calculate | Esc: cancel",
 
 		// Loading
 		"loading": "Calculating route...",
@@ -76,6 +79,7 @@ var translations = map[string]map[string]string{
 		"result_route":      "Route:",
 		"result_distance":   "Distance:  ",
 		"result_duration":   "Duration:  ",
+		"result_mode":       "Route mode: ",
 		"result_group":      "Passenger Group: ",
 		"result_board":      "Board Fee:  ",
 		"result_km":         "Km Fee:     ",
@@ -160,7 +164,10 @@ var translations = map[string]map[string]string{
 		"calc_label_start":         "Vertrekadres",
 		"calc_label_end":           "Bestemming",
 		"calc_label_passengers":    "Aantal passagiers (1-8)",
-		"calc_help":                "Tab: volgend veld | Enter: berekenen | Esc: annuleren",
+		"calc_mode":               "Route",
+		"calc_mode_fastest":       "Snelste",
+		"calc_mode_shortest":      "Kortste",
+		"calc_help":               "Tab: volgend veld | r: route type | Enter: berekenen | Esc: annuleren",
 
 		// Loading
 		"loading": "Route berekenen...",
@@ -170,6 +177,7 @@ var translations = map[string]map[string]string{
 		"result_route":      "Route:",
 		"result_distance":   "Afstand:   ",
 		"result_duration":   "Duur:      ",
+		"result_mode":       "Route type: ",
 		"result_group":      "Passagiersgroep: ",
 		"result_board":      "Instaptarief:  ",
 		"result_km":         "Km kosten:     ",

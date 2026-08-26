@@ -50,6 +50,7 @@ type Model struct {
 	lang      string
 	setupStep int
 	loading   bool
+	routeMode string
 }
 
 func NewModel() Model {
@@ -78,9 +79,10 @@ func NewModel() Model {
 	}
 
 	return Model{
-		screen: screenMain,
-		config: cfg,
-		lang:   lang,
+		screen:    screenMain,
+		config:    cfg,
+		lang:      lang,
+		routeMode: "fastest",
 	}
 }
 
@@ -341,6 +343,13 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
+	case "r":
+		if m.routeMode == "fastest" {
+			m.routeMode = "shortest"
+		} else {
+			m.routeMode = "fastest"
+		}
+		return m, nil
 	case "tab", "shift+tab":
 		if len(m.inputs) == 0 {
 			return m, nil
@@ -443,9 +452,10 @@ func (m Model) startCalculation() (tea.Model, tea.Cmd) {
 	end := endAddr
 	p := passengers
 	grps := groups
+	mode := m.routeMode
 
 	return m, func() tea.Msg {
-		route, err := routing.CalculateRoute(start, end)
+		route, err := routing.CalculateRoute(start, end, mode)
 		if err != nil {
 			return routeErrMsg{err: err}
 		}
@@ -725,6 +735,12 @@ func (m Model) viewCalc() string {
 		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_passengers")) + "\n")
 	}
 	b.WriteString("\n")
+	if m.routeMode == "fastest" {
+		b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_fastest")) + "\n")
+	} else {
+		b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_shortest")) + "\n")
+	}
+	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "calc_help")))
 	return b.String()
 }
@@ -738,6 +754,12 @@ func (m Model) viewResult() string {
 	b.WriteString("  " + m.startAddr + "\n")
 	b.WriteString("  " + arrowStyle.Render(" ↓ ") + "\n")
 	b.WriteString("  " + m.endAddr + "\n\n")
+
+	if m.routeMode == "shortest" {
+		b.WriteString(t(m.lang, "result_mode") + t(m.lang, "calc_mode_shortest") + "\n")
+	} else {
+		b.WriteString(t(m.lang, "result_mode") + t(m.lang, "calc_mode_fastest") + "\n")
+	}
 
 	if m.routeInfo != nil {
 		b.WriteString(t(m.lang, "result_distance") + fmt.Sprintf("%.1f km", m.routeInfo.DistanceKm) + "\n")

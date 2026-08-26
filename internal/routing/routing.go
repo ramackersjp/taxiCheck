@@ -131,11 +131,11 @@ func Geocode(address string) (float64, float64, error) {
 	return lat, lon, nil
 }
 
-func GetRoute(lat1, lon1, lat2, lon2 float64) (*RouteResult, error) {
+func GetRoute(lat1, lon1, lat2, lon2 float64, mode string) (*RouteResult, error) {
 	LoadEnv()
 
 	coords := fmt.Sprintf("%f,%f;%f,%f", lon1, lat1, lon2, lat2)
-	reqURL := fmt.Sprintf("%s/route/v1/driving/%s?overview=false", osrmURL, coords)
+	reqURL := fmt.Sprintf("%s/route/v1/driving/%s?overview=false&alternatives=true", osrmURL, coords)
 
 	resp, err := httpClient.Get(reqURL)
 	if err != nil {
@@ -162,12 +162,22 @@ func GetRoute(lat1, lon1, lat2, lon2 float64) (*RouteResult, error) {
 		return nil, fmt.Errorf("no route found between the addresses")
 	}
 
-	route := osrmResp.Routes[0]
-	if len(route.Legs) == 0 {
+	bestRoute := osrmResp.Routes[0]
+	if mode == "shortest" && len(osrmResp.Routes) > 1 {
+		for _, r := range osrmResp.Routes {
+			if len(r.Legs) > 0 && len(bestRoute.Legs) > 0 {
+				if r.Legs[0].Distance < bestRoute.Legs[0].Distance {
+					bestRoute = r
+				}
+			}
+		}
+	}
+
+	if len(bestRoute.Legs) == 0 {
 		return nil, fmt.Errorf("route has no legs")
 	}
 
-	leg := route.Legs[0]
+	leg := bestRoute.Legs[0]
 	distanceKm := leg.Distance / 1000.0
 	durationMin := leg.Duration / 60.0
 
@@ -177,7 +187,7 @@ func GetRoute(lat1, lon1, lat2, lon2 float64) (*RouteResult, error) {
 	}, nil
 }
 
-func CalculateRoute(startAddress, endAddress string) (*RouteResult, error) {
+func CalculateRoute(startAddress, endAddress string, mode string) (*RouteResult, error) {
 	startAddr := strings.TrimSpace(startAddress)
 	endAddr := strings.TrimSpace(endAddress)
 
@@ -195,7 +205,7 @@ func CalculateRoute(startAddress, endAddress string) (*RouteResult, error) {
 		return nil, fmt.Errorf("end address: %w", err)
 	}
 
-	result, err := GetRoute(lat1, lon1, lat2, lon2)
+	result, err := GetRoute(lat1, lon1, lat2, lon2, mode)
 	if err != nil {
 		return nil, err
 	}
