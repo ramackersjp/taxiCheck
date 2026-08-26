@@ -121,6 +121,7 @@ type Model struct {
 	uninstallStatus string
 	settingsStep   int
 	settingsLang   string
+	setupDone      bool
 }
 
 func NewModel() Model {
@@ -140,6 +141,7 @@ func NewModel() Model {
 			config:    cfg,
 			lang:      "en",
 			setupStep: 0,
+			setupDone: false,
 		}
 	}
 
@@ -153,6 +155,7 @@ func NewModel() Model {
 		config:    cfg,
 		lang:      lang,
 		routeMode: "fastest",
+		setupDone: true,
 	}
 }
 
@@ -348,9 +351,12 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "3":
 		m.screen = screenHelp
 	case "4":
-		m.screen = screenSetup
-		m.setupStep = 0
-		m.inputs = nil
+		if !m.setupDone {
+			m.screen = screenSetup
+			m.setupStep = 0
+			m.inputs = nil
+			return m, nil
+		}
 		return m, nil
 	case "5":
 		m.screen = screenUpdate
@@ -997,6 +1003,7 @@ func (m Model) saveSetup() (tea.Model, tea.Cmd) {
 	}
 
 	m.screen = screenMain
+	m.setupDone = true
 	m.err = ""
 	return m, nil
 }
@@ -1102,7 +1109,9 @@ func (m Model) viewMain() string {
 	b.WriteString(keyStyle.Render("1") + t(m.lang, "main_calc") + "\n")
 	b.WriteString(keyStyle.Render("2") + t(m.lang, "main_settings") + "\n")
 	b.WriteString(keyStyle.Render("3") + t(m.lang, "main_help") + "\n")
-	b.WriteString(keyStyle.Render("4") + t(m.lang, "main_setup") + "\n")
+	if !m.setupDone {
+		b.WriteString(keyStyle.Render("4") + t(m.lang, "main_setup") + "\n")
+	}
 	b.WriteString(keyStyle.Render("5") + t(m.lang, "main_update") + "\n")
 	b.WriteString(keyStyle.Render("6") + t(m.lang, "main_branch") + "\n")
 	b.WriteString(keyStyle.Render("7") + t(m.lang, "main_uninstall") + "\n")
@@ -1219,7 +1228,9 @@ func (m Model) viewHelp() string {
 	b.WriteString("  " + keyStyle.Render("1") + t(m.lang, "help_calc") + "\n")
 	b.WriteString("  " + keyStyle.Render("2") + t(m.lang, "help_settings") + "\n")
 	b.WriteString("  " + keyStyle.Render("3") + t(m.lang, "help_help") + "\n")
-	b.WriteString("  " + keyStyle.Render("4") + t(m.lang, "help_setup") + "\n")
+	if !m.setupDone {
+		b.WriteString("  " + keyStyle.Render("4") + t(m.lang, "help_setup") + "\n")
+	}
 	b.WriteString("  " + keyStyle.Render("5") + t(m.lang, "help_update") + "\n")
 	b.WriteString("  " + keyStyle.Render("6") + t(m.lang, "help_branch") + "\n")
 	b.WriteString("  " + keyStyle.Render("7") + t(m.lang, "help_uninstall") + "\n")
