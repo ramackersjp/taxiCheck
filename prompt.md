@@ -164,7 +164,7 @@ taxiprijs/
 - Yellow taxi-inspired UI with Unicode block art logo
 - Keyboard-only navigation
 - English and Dutch language support
-- Fastest/shortest route mode toggle (press 'r' on calc screen)
+- Fastest/shortest route mode toggle (press F2 on calc screen)
 - Version display in main menu
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI
