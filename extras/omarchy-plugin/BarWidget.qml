@@ -19,7 +19,7 @@ BarWidget {
     onPressed: function(btn) {
       if (!root.bar) return
       if (btn === Qt.LeftButton) {
-        root.bar.run("alacritty -e /home/jp/Code/taxiprijs/taxiprijs")
+        root.bar.run("alacritty --class TaxiCheck -o 'window.dimensions.columns=80' -o 'window.dimensions.lines=25' -e /home/jp/Code/taxiprijs/taxiprijs")
       }
     }
   }
