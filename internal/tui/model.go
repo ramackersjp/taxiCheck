@@ -1048,9 +1048,6 @@ func (m Model) View() string {
 	var full strings.Builder
 	full.WriteString("\n")
 	full.WriteString(GetLogoCentered(m.width))
-	full.WriteString("\n")
-	full.WriteString(titleStyle.Render(t(m.lang, "title")))
-	full.WriteString(" " + helpStyle.Render("v"+appVersion))
 	full.WriteString("\n\n")
 	full.WriteString(content)
 

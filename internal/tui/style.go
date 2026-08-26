@@ -69,11 +69,6 @@ var (
 			Foreground(绿色).
 			Bold(true)
 
-	logoStyle = lipgloss.NewStyle().
-			Foreground(黄色).
-			Bold(true).
-			MarginRight(2)
-
 	arrowStyle = lipgloss.NewStyle().
 			Foreground(黄色).
 			Bold(true)
