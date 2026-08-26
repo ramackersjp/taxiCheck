@@ -1280,9 +1280,9 @@ func (m Model) viewCalc() string {
 	}
 	b.WriteString("\n")
 	if m.routeMode == "fastest" {
-		b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_fastest")) + "\n")
+		b.WriteString(keyStyle.Render("F2") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_fastest")) + "\n")
 	} else {
-		b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_shortest")) + "\n")
+		b.WriteString(keyStyle.Render("F2") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_shortest")) + "\n")
 	}
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "calc_help")))
