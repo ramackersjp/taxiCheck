@@ -13,6 +13,11 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - English and Dutch language support
 - Clean, professional taxi-inspired UI with yellow borders
 - ASCII taxi logo
+- Version display in main menu
+- Check for updates from GitHub
+- Pull updates directly from the TUI
+- Switch between dev and stable branches from the TUI
+- Uninstall from the main menu
 
 ## Installation
 
@@ -29,6 +34,7 @@ go build -o taxiprijs ./cmd/taxiprijs
 
 - Go 1.21 or later
 - Internet connection (for route calculation via OpenStreetMap)
+- Git (for update and branch features)
 
 ### Recommended Font
 
@@ -59,6 +65,9 @@ On first launch, the application will perform initial setup:
 - **2** - Settings
 - **3** - Help/Manual
 - **4** - Initial Setup
+- **5** - Check for Updates
+- **6** - Switch Branch
+- **7** - Uninstall
 - **q** - Quit
 
 ### Calculating a Fare
@@ -69,16 +78,48 @@ On first launch, the application will perform initial setup:
 4. Press Enter - the app calculates the route and fare automatically
 5. View the route details (distance, duration) and fare breakdown
 
+### Checking for Updates
+
+1. Press **5** from the main menu
+2. The app checks GitHub for the latest release
+3. If an update is available, press **u** to pull it via `git pull`
+4. Press **r** to re-check
+
+### Switching Branches
+
+1. Press **6** from the main menu
+2. Use ↑/↓ to select a branch
+3. Press **Space** to switch to the selected branch
+4. Available branches: `dev` and stable release branches (e.g. `v1.0.0`)
+
+> **Note:** The `dev` branch may be chaotic and unstable. Use the stable release branch for production use.
+
+### Uninstalling
+
+1. Press **7** from the main menu
+2. Confirm with **y** to uninstall
+3. The app removes the binary and desktop entry
+
 ### Keyboard Controls
 
 | Key | Action |
 |-----|--------|
-| 1-4 | Select menu option |
+| 1-7 | Select menu option |
 | Tab | Next input field |
 | Shift+Tab | Previous input field |
 | Enter | Submit/Save |
 | Esc | Back/Cancel |
 | q | Quit |
+
+## Branch Strategy
+
+| Branch | Purpose | Stability |
+|--------|---------|-----------|
+| `dev` | Development | Chaotic, unstable, may break at any time |
+| `v1.0.0` | Stable release | Current stable version |
+| `main` | Production | Only merged from stable releases |
+
+> **Important:** For new features, always create a branch from `dev`, not from stable releases.
 
 ## Configuration
 
@@ -217,10 +258,21 @@ gofmt -w .
 ## Git Workflow
 
 - Development happens on the `dev` branch
-- Never commit directly to `master`
-- Create feature branches from `dev`
+- Never commit directly to `main` or stable release branches
+- Create feature branches from `dev` for new features
 - Test before committing
 - Never commit `.env`
+
+### Making New Features
+
+1. Create a feature branch from `dev`:
+   ```bash
+   git checkout dev
+   git checkout -b feature/my-new-feature
+   ```
+2. Implement and test your changes
+3. Commit with descriptive messages
+4. Merge back to `dev` when ready
 
 ## License
 

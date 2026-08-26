@@ -8,6 +8,9 @@ taxiprijs \- Dutch taxi fare calculator TUI
 is a terminal user interface application for calculating taxi fares in the Netherlands.
 .PP
 It supports configurable pricing for different passenger groups and uses TOML for configuration.
+.PP
+The main menu displays the current version and provides options for fare calculation,
+settings, help, initial setup, update checking, branch switching, and uninstalling.
 .SH OPTIONS
 .B taxiprijs
 does not take any command line options.
@@ -25,6 +28,15 @@ Help/Manual
 .B 4
 Initial setup
 .TP
+.B 5
+Check for updates (GitHub)
+.TP
+.B 6
+Switch branch (dev / stable)
+.TP
+.B 7
+Uninstall
+.TP
 .B q
 Quit
 .TP
@@ -39,6 +51,19 @@ Submit/Save
 .TP
 .B Esc
 Back/Cancel
+.SH UPDATE & BRANCHES
+The application can check for updates on GitHub and pull them directly.
+.PP
+Branches available:
+.TP
+.B dev
+Development branch - may be unstable
+.TP
+.B v1.0.0
+Stable release branch
+.SH UNINSTALLING
+Option 7 in the main menu removes the binary and desktop entry via
+.BR make uninstall (1).
 .SH CONFIGURATION
 Configuration is stored in
 .B ~/.taxiprijs/config.toml
