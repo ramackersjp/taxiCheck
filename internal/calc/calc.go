@@ -1,27 +1,27 @@
 package calc
 
 import (
-	"fmt"
-	"time"
+	"strings"
 )
 
 type PassengerGroup struct {
 	Name       string  `toml:"name"`
 	BoardFee   float64 `toml:"board_fee"`
+	PerKm      float64 `toml:"per_km"`
 	PerMinute  float64 `toml:"per_minute"`
 	WaitMinute float64 `toml:"wait_minute"`
 }
 
 type FareInput struct {
-	Minutes    float64
-	WaitTime   float64
-	Passengers int
+	DistanceKm  float64
+	DurationMin float64
+	Passengers  int
 }
 
 type FareResult struct {
 	BaseFee float64
+	KmFee   float64
 	TimeFee float64
-	WaitFee float64
 	Total   float64
 	Group   string
 }
@@ -30,27 +30,27 @@ func Calculate(input FareInput, groups []PassengerGroup) FareResult {
 	group := selectGroup(input.Passengers, groups)
 
 	baseFee := group.BoardFee
-	timeFee := input.Minutes * group.PerMinute
-	waitFee := input.WaitTime * group.WaitMinute
+	kmFee := input.DistanceKm * group.PerKm
+	timeFee := input.DurationMin * group.PerMinute
 
 	return FareResult{
 		BaseFee: baseFee,
+		KmFee:   kmFee,
 		TimeFee: timeFee,
-		WaitFee: waitFee,
-		Total:   baseFee + timeFee + waitFee,
+		Total:   baseFee + kmFee + timeFee,
 		Group:   group.Name,
 	}
 }
 
 func selectGroup(passengers int, groups []PassengerGroup) PassengerGroup {
 	for _, g := range groups {
-		switch g.Name {
-		case "1-5 passengers":
-			if passengers >= 1 && passengers <= 5 {
+		switch {
+		case strings.Contains(g.Name, "max 4"):
+			if passengers >= 1 && passengers <= 4 {
 				return g
 			}
-		case "1-4 passengers":
-			if passengers >= 1 && passengers <= 4 {
+		case strings.Contains(g.Name, "5-8"):
+			if passengers >= 5 && passengers <= 8 {
 				return g
 			}
 		}
@@ -62,14 +62,9 @@ func selectGroup(passengers int, groups []PassengerGroup) PassengerGroup {
 
 	return PassengerGroup{
 		Name:       "default",
-		BoardFee:   3.50,
-		PerMinute:  0.50,
-		WaitMinute: 0.50,
+		BoardFee:   4.31,
+		PerKm:      3.17,
+		PerMinute:  0.52,
+		WaitMinute: 59.41,
 	}
-}
-
-func FormatDuration(d time.Duration) string {
-	minutes := int(d.Minutes())
-	seconds := int(d.Seconds()) % 60
-	return fmt.Sprintf("%dm %ds", minutes, seconds)
 }

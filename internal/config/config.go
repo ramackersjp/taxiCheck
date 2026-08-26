@@ -15,12 +15,14 @@ const (
 )
 
 type Config struct {
+	Language        string           `toml:"language"`
 	PassengerGroups []PassengerGroup `toml:"passenger_groups"`
 }
 
 type PassengerGroup struct {
 	Name       string  `toml:"name"`
 	BoardFee   float64 `toml:"board_fee"`
+	PerKm      float64 `toml:"per_km"`
 	PerMinute  float64 `toml:"per_minute"`
 	WaitMinute float64 `toml:"wait_minute"`
 }
@@ -29,16 +31,18 @@ func DefaultConfig() *Config {
 	return &Config{
 		PassengerGroups: []PassengerGroup{
 			{
-				Name:       "1-4 passengers",
-				BoardFee:   3.50,
-				PerMinute:  0.50,
-				WaitMinute: 0.50,
+				Name:       "Taxi auto (max 4)",
+				BoardFee:   4.31,
+				PerKm:      3.17,
+				PerMinute:  0.52,
+				WaitMinute: 59.41,
 			},
 			{
-				Name:       "1-5 passengers",
-				BoardFee:   5.00,
-				PerMinute:  0.65,
-				WaitMinute: 0.65,
+				Name:       "Taxi bus (5-8)",
+				BoardFee:   8.77,
+				PerKm:      4.00,
+				PerMinute:  0.59,
+				WaitMinute: 59.41,
 			},
 		},
 	}
@@ -122,6 +126,9 @@ func validate(cfg *Config) error {
 		}
 		if g.BoardFee < 0 {
 			return fmt.Errorf("passenger group %q: board fee cannot be negative", g.Name)
+		}
+		if g.PerKm < 0 {
+			return fmt.Errorf("passenger group %q: per km rate cannot be negative", g.Name)
 		}
 		if g.PerMinute < 0 {
 			return fmt.Errorf("passenger group %q: per minute rate cannot be negative", g.Name)

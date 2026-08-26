@@ -1,14 +1,16 @@
-# Taxiprijs
+# TaxiCheck
 
-A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi fares.
+A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi fares using real-time OpenStreetMap route data.
 
 ## Features
 
-- Calculate taxi fares based on configurable rates
-- Support for multiple passenger groups (1-4 and 1-5 passengers)
-- Configurable pricing: board fee, per minute rate, waiting time rate
+- Real-time route calculation via OpenStreetMap (OSRM + Nominatim)
+- Address-based fare calculation within the Netherlands
+- Support for two passenger groups: Taxi auto (max. 4) and Taxi bus (5-8)
+- Configurable pricing: board fee, per km rate, per minute rate
 - TOML-based configuration that can be manually edited
 - Settings screen to modify pricing without editing files
+- English and Dutch language support
 - Clean, professional taxi-inspired UI with yellow borders
 - ASCII taxi logo
 
@@ -19,12 +21,14 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 ```bash
 git clone https://github.com/jp/taxiprijs.git
 cd taxiprijs
+cp .env.example .env
 go build -o taxiprijs ./cmd/taxiprijs
 ```
 
 ### Prerequisites
 
 - Go 1.21 or later
+- Internet connection (for route calculation via OpenStreetMap)
 
 ### Recommended Font
 
@@ -40,11 +44,14 @@ For the best experience, use [JetBrains Nerd Font](https://www.nerdfonts.com/). 
 
 ### First Run
 
-On first launch, the application will detect that no configuration exists and offer to perform initial setup. You can:
+On first launch, the application will perform initial setup:
 
-1. Enter pricing for each passenger group
-2. Press Enter to save
-3. Press Esc to cancel
+1. **Select Language** - Choose English (1) or Nederlands (2)
+2. **Configure Pricing** - Set rates for each passenger group:
+   - Board Fee (instaptarief)
+   - Per Km (kilometertarief)
+   - Per Minute (tijdtarief)
+   - Wait Minute (wachtminuut)
 
 ### Main Menu
 
@@ -56,11 +63,11 @@ On first launch, the application will detect that no configuration exists and of
 
 ### Calculating a Fare
 
-1. Enter trip duration in minutes
-2. Enter waiting time in minutes
-3. Enter number of passengers (1-5)
-4. Press Enter to calculate
-5. View the fare breakdown and total
+1. Enter start address (e.g. "Dam Square, Amsterdam")
+2. Enter destination (e.g. "Central Station, Rotterdam")
+3. Enter number of passengers (1-8)
+4. Press Enter - the app calculates the route and fare automatically
+5. View the route details (distance, duration) and fare breakdown
 
 ### Keyboard Controls
 
@@ -75,6 +82,21 @@ On first launch, the application will detect that no configuration exists and of
 
 ## Configuration
 
+### API Configuration
+
+Copy `.env.example` to `.env` and configure if needed:
+
+```env
+# OSRM routing API (default: public demo server)
+OSRM_URL=https://router.project-osrm.org
+
+# Nominatim geocoding API (default: OpenStreetMap)
+NOMINATIM_URL=https://nominatim.openstreetmap.org
+
+# User agent for API requests (required by Nominatim)
+USER_AGENT=TaxiCheck/1.0
+```
+
 ### Configuration File Location
 
 ```
@@ -84,17 +106,21 @@ On first launch, the application will detect that no configuration exists and of
 ### TOML Format
 
 ```toml
-[[passenger_groups]]
-name = "1-4 passengers"
-board_fee = 3.50
-per_minute = 0.50
-wait_minute = 0.50
+language = "nl"
 
 [[passenger_groups]]
-name = "1-5 passengers"
-board_fee = 5.00
-per_minute = 0.65
-wait_minute = 0.65
+name = "Taxi auto (max. 4 personen)"
+board_fee = 4.31
+per_km = 3.17
+per_minute = 0.52
+wait_minute = 59.41
+
+[[passenger_groups]]
+name = "Taxi bus (5-8 personen)"
+board_fee = 8.77
+per_km = 4.00
+per_minute = 0.59
+wait_minute = 59.41
 ```
 
 ### Manual Configuration
@@ -105,18 +131,27 @@ You can edit the TOML file directly with any text editor. Changes will be loaded
 
 Access Settings from the main menu (option 2) to modify pricing without manually editing the TOML file. Changes are saved automatically.
 
-## Passenger Categories
+## Passenger Groups
 
-| Category | Description |
-|----------|-------------|
-| 1-4 passengers | Standard group size |
-| 1-5 passengers | Larger group (e.g., van) |
+| Group | Passengers | Description |
+|-------|-----------|-------------|
+| Taxi auto | 1-4 | Standard taxi |
+| Taxi bus | 5-8 | Larger group (minivan) |
 
 ## Pricing
 
-- **Board Fee**: Initial charge when entering the taxi
-- **Per Minute**: Cost per minute of driving
-- **Wait Minute**: Cost per minute of waiting
+- **Board Fee (Instaptarief)**: Initial charge when entering the taxi
+- **Per Km (Kilometertarief)**: Cost per kilometer driven
+- **Per Minute (Tijdtarief)**: Cost per minute of driving
+
+## API
+
+The application uses two OpenStreetMap APIs:
+
+- **Nominatim** - Geocoding (converting addresses to coordinates)
+- **OSRM** - Routing (calculating distance and duration between coordinates)
+
+All addresses are limited to the Netherlands.
 
 ## Manual
 
@@ -141,24 +176,29 @@ man taxiprijs
 taxiprijs/
 ├── cmd/
 │   └── taxiprijs/
-│       └── main.go          # Application entry point
+│       └── main.go              # Application entry point
 ├── internal/
 │   ├── calc/
-│   │   ├── calc.go          # Fare calculation engine
-│   │   └── calc_test.go     # Unit tests
+│   │   ├── calc.go              # Fare calculation engine
+│   │   └── calc_test.go         # Unit tests
 │   ├── config/
-│   │   ├── config.go        # TOML configuration
-│   │   └── config_test.go   # Unit tests
+│   │   ├── config.go            # TOML configuration
+│   │   └── config_test.go       # Unit tests
+│   ├── routing/
+│   │   └── routing.go           # OSRM + Nominatim API client
 │   └── tui/
-│       ├── model.go         # Bubble Tea TUI
-│       ├── style.go         # Lip Gloss styling
-│       └── logo.go          # ASCII taxi logo
+│       ├── model.go             # Bubble Tea TUI
+│       ├── style.go             # Lip Gloss styling
+│       ├── lang.go              # EN/NL translations
+│       └── logo.go              # ASCII taxi logo
+├── .env.example                 # API configuration template
+├── .env                         # API configuration (git-ignored)
 ├── go.mod
 ├── go.sum
 ├── LICENSE
 ├── README.md
-├── taxiprijs.1              # Man page
-└── prompt.md                # Project knowledge
+├── taxiprijs.1                  # Man page
+└── prompt.md                    # Project knowledge
 ```
 
 ### Running Tests
@@ -180,6 +220,7 @@ gofmt -w .
 - Never commit directly to `master`
 - Create feature branches from `dev`
 - Test before committing
+- Never commit `.env`
 
 ## License
 
@@ -197,12 +238,3 @@ rm -rf ~/.taxiprijs
 # Remove man page (if installed)
 sudo rm /usr/local/share/man/man1/taxiprijs.1
 ```
-
-## Future Features
-
-The architecture is designed to support future integration with:
-
-- Real-time routing APIs
-- Traffic information
-- Actual driving distance
-- Estimated arrival times

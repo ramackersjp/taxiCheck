@@ -73,6 +73,10 @@ var (
 			Foreground(黄色).
 			Bold(true).
 			MarginRight(2)
+
+	arrowStyle = lipgloss.NewStyle().
+			Foreground(黄色).
+			Bold(true)
 )
 
 func ApplyYellowBorder(s lipgloss.Style) lipgloss.Style {

@@ -4,78 +4,85 @@ import (
 	"testing"
 )
 
-func TestCalculate1to4Passengers(t *testing.T) {
+func approxEqual(a, b, tolerance float64) bool {
+	if a-b < 0 {
+		b, a = a, b
+	}
+	return a-b < tolerance
+}
+
+func TestCalculateTaxiAuto(t *testing.T) {
 	groups := []PassengerGroup{
-		{Name: "1-4 passengers", BoardFee: 3.50, PerMinute: 0.50, WaitMinute: 0.50},
-		{Name: "1-5 passengers", BoardFee: 5.00, PerMinute: 0.65, WaitMinute: 0.65},
+		{Name: "Taxi auto (max 4)", BoardFee: 4.31, PerKm: 3.17, PerMinute: 0.52, WaitMinute: 59.41},
+		{Name: "Taxi bus (5-8)", BoardFee: 8.77, PerKm: 4.00, PerMinute: 0.59, WaitMinute: 59.41},
 	}
 
 	input := FareInput{
-		Minutes:    10,
-		WaitTime:   2,
-		Passengers: 3,
+		DistanceKm:  15.5,
+		DurationMin: 22,
+		Passengers:  3,
 	}
 
 	result := Calculate(input, groups)
 
-	if result.Group != "1-4 passengers" {
-		t.Errorf("expected group '1-4 passengers', got %q", result.Group)
+	if result.Group != "Taxi auto (max 4)" {
+		t.Errorf("expected group 'Taxi auto (max 4)', got %q", result.Group)
 	}
 
-	if result.BaseFee != 3.50 {
-		t.Errorf("expected base fee 3.50, got %.2f", result.BaseFee)
+	if result.BaseFee != 4.31 {
+		t.Errorf("expected base fee 4.31, got %.2f", result.BaseFee)
 	}
 
-	expectedTimeFee := 10 * 0.50
-	if result.TimeFee != expectedTimeFee {
+	expectedKmFee := 15.5 * 3.17
+	if !approxEqual(result.KmFee, expectedKmFee, 0.01) {
+		t.Errorf("expected km fee %.2f, got %.2f", expectedKmFee, result.KmFee)
+	}
+
+	expectedTimeFee := 22 * 0.52
+	if !approxEqual(result.TimeFee, expectedTimeFee, 0.01) {
 		t.Errorf("expected time fee %.2f, got %.2f", expectedTimeFee, result.TimeFee)
 	}
 
-	expectedWaitFee := 2 * 0.50
-	if result.WaitFee != expectedWaitFee {
-		t.Errorf("expected wait fee %.2f, got %.2f", expectedWaitFee, result.WaitFee)
-	}
-
-	expectedTotal := 3.50 + expectedTimeFee + expectedWaitFee
-	if result.Total != expectedTotal {
+	expectedTotal := 4.31 + expectedKmFee + expectedTimeFee
+	if !approxEqual(result.Total, expectedTotal, 0.01) {
 		t.Errorf("expected total %.2f, got %.2f", expectedTotal, result.Total)
 	}
 }
 
-func TestCalculate1to5Passengers(t *testing.T) {
+func TestCalculateTaxiBus(t *testing.T) {
 	groups := []PassengerGroup{
-		{Name: "1-4 passengers", BoardFee: 3.50, PerMinute: 0.50, WaitMinute: 0.50},
-		{Name: "1-5 passengers", BoardFee: 5.00, PerMinute: 0.65, WaitMinute: 0.65},
+		{Name: "Taxi auto (max 4)", BoardFee: 4.31, PerKm: 3.17, PerMinute: 0.52, WaitMinute: 59.41},
+		{Name: "Taxi bus (5-8)", BoardFee: 8.77, PerKm: 4.00, PerMinute: 0.59, WaitMinute: 59.41},
 	}
 
 	input := FareInput{
-		Minutes:    20,
-		WaitTime:   5,
-		Passengers: 5,
+		DistanceKm:  80.0,
+		DurationMin: 55,
+		Passengers:  6,
 	}
 
 	result := Calculate(input, groups)
 
-	if result.Group != "1-5 passengers" {
-		t.Errorf("expected group '1-5 passengers', got %q", result.Group)
+	if result.Group != "Taxi bus (5-8)" {
+		t.Errorf("expected group 'Taxi bus (5-8)', got %q", result.Group)
 	}
 
-	if result.BaseFee != 5.00 {
-		t.Errorf("expected base fee 5.00, got %.2f", result.BaseFee)
+	if result.BaseFee != 8.77 {
+		t.Errorf("expected base fee 8.77, got %.2f", result.BaseFee)
 	}
 
-	expectedTimeFee := 20 * 0.65
-	if result.TimeFee != expectedTimeFee {
+	expectedKmFee := 80.0 * 4.00
+	if !approxEqual(result.KmFee, expectedKmFee, 0.01) {
+		t.Errorf("expected km fee %.2f, got %.2f", expectedKmFee, result.KmFee)
+	}
+
+	expectedTimeFee := 55 * 0.59
+	if !approxEqual(result.TimeFee, expectedTimeFee, 0.01) {
 		t.Errorf("expected time fee %.2f, got %.2f", expectedTimeFee, result.TimeFee)
 	}
 
-	expectedWaitFee := 5 * 0.65
-	if result.WaitFee != expectedWaitFee {
-		t.Errorf("expected wait fee %.2f, got %.2f", expectedWaitFee, result.WaitFee)
-	}
-
-	expectedTotal := 5.00 + expectedTimeFee + expectedWaitFee
-	if result.Total != expectedTotal {
+	expectedTotal := 8.77 + expectedKmFee + expectedTimeFee
+	if !approxEqual(result.Total, expectedTotal, 0.01) {
 		t.Errorf("expected total %.2f, got %.2f", expectedTotal, result.Total)
 	}
 }
@@ -84,9 +91,9 @@ func TestCalculateDefaultGroup(t *testing.T) {
 	groups := []PassengerGroup{}
 
 	input := FareInput{
-		Minutes:    5,
-		WaitTime:   0,
-		Passengers: 2,
+		DistanceKm:  10.0,
+		DurationMin: 15,
+		Passengers:  2,
 	}
 
 	result := Calculate(input, groups)
@@ -95,36 +102,42 @@ func TestCalculateDefaultGroup(t *testing.T) {
 		t.Errorf("expected group 'default', got %q", result.Group)
 	}
 
-	if result.BaseFee != 3.50 {
-		t.Errorf("expected base fee 3.50, got %.2f", result.BaseFee)
+	if result.BaseFee != 4.31 {
+		t.Errorf("expected base fee 4.31, got %.2f", result.BaseFee)
 	}
 
-	expectedTimeFee := 5 * 0.50
-	if result.TimeFee != expectedTimeFee {
+	expectedKmFee := 10.0 * 3.17
+	if !approxEqual(result.KmFee, expectedKmFee, 0.01) {
+		t.Errorf("expected km fee %.2f, got %.2f", expectedKmFee, result.KmFee)
+	}
+
+	expectedTimeFee := 15 * 0.52
+	if !approxEqual(result.TimeFee, expectedTimeFee, 0.01) {
 		t.Errorf("expected time fee %.2f, got %.2f", expectedTimeFee, result.TimeFee)
 	}
 
-	expectedTotal := 3.50 + expectedTimeFee
-	if result.Total != expectedTotal {
+	expectedTotal := 4.31 + expectedKmFee + expectedTimeFee
+	if !approxEqual(result.Total, expectedTotal, 0.01) {
 		t.Errorf("expected total %.2f, got %.2f", expectedTotal, result.Total)
 	}
 }
 
 func TestSelectGroup(t *testing.T) {
 	groups := []PassengerGroup{
-		{Name: "1-4 passengers", BoardFee: 3.50, PerMinute: 0.50, WaitMinute: 0.50},
-		{Name: "1-5 passengers", BoardFee: 5.00, PerMinute: 0.65, WaitMinute: 0.65},
+		{Name: "Taxi auto (max 4)", BoardFee: 4.31, PerKm: 3.17, PerMinute: 0.52, WaitMinute: 59.41},
+		{Name: "Taxi bus (5-8)", BoardFee: 8.77, PerKm: 4.00, PerMinute: 0.59, WaitMinute: 59.41},
 	}
 
 	tests := []struct {
 		passengers int
 		wantGroup  string
 	}{
-		{1, "1-4 passengers"},
-		{4, "1-4 passengers"},
-		{5, "1-5 passengers"},
-		{0, "1-4 passengers"},
-		{6, "1-4 passengers"},
+		{1, "Taxi auto (max 4)"},
+		{4, "Taxi auto (max 4)"},
+		{5, "Taxi bus (5-8)"},
+		{8, "Taxi bus (5-8)"},
+		{0, "Taxi auto (max 4)"},
+		{9, "Taxi auto (max 4)"},
 	}
 
 	for _, tt := range tests {

@@ -19,12 +19,12 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatalf("expected 2 passenger groups, got %d", len(cfg.PassengerGroups))
 	}
 
-	if cfg.PassengerGroups[0].Name != "1-4 passengers" {
-		t.Errorf("expected first group name '1-4 passengers', got %q", cfg.PassengerGroups[0].Name)
+	if cfg.PassengerGroups[0].Name != "Taxi auto (max 4)" {
+		t.Errorf("expected first group name 'Taxi auto (max 4)', got %q", cfg.PassengerGroups[0].Name)
 	}
 
-	if cfg.PassengerGroups[1].Name != "1-5 passengers" {
-		t.Errorf("expected second group name '1-5 passengers', got %q", cfg.PassengerGroups[1].Name)
+	if cfg.PassengerGroups[1].Name != "Taxi bus (5-8)" {
+		t.Errorf("expected second group name 'Taxi bus (5-8)', got %q", cfg.PassengerGroups[1].Name)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestValidateEmptyGroups(t *testing.T) {
 func TestValidateNegativeValues(t *testing.T) {
 	cfg := &Config{
 		PassengerGroups: []PassengerGroup{
-			{Name: "test", BoardFee: -1, PerMinute: 0.5, WaitMinute: 0.5},
+			{Name: "test", BoardFee: -1, PerKm: 3.0, PerMinute: 0.5, WaitMinute: 0.5},
 		},
 	}
 	err := validate(cfg)
@@ -58,7 +58,7 @@ func TestValidateNegativeValues(t *testing.T) {
 func TestValidateEmptyName(t *testing.T) {
 	cfg := &Config{
 		PassengerGroups: []PassengerGroup{
-			{Name: "", BoardFee: 3.5, PerMinute: 0.5, WaitMinute: 0.5},
+			{Name: "", BoardFee: 3.5, PerKm: 3.0, PerMinute: 0.5, WaitMinute: 0.5},
 		},
 	}
 	err := validate(cfg)
