@@ -1,0 +1,94 @@
+.TH TAXIPRIJS 1 "2024" "taxiprijs 1.0" "User Commands"
+.SH NAME
+taxiprijs \- Dutch taxi fare calculator TUI
+.SH SYNOPSIS
+.B taxiprijs
+.SH DESCRIPTION
+.B taxiprijs
+is a terminal user interface application for calculating taxi fares in the Netherlands.
+.PP
+It supports configurable pricing for different passenger groups and uses TOML for configuration.
+.SH OPTIONS
+.B taxiprijs
+does not take any command line options.
+.SH KEYBOARD CONTROLS
+.TP
+.B 1
+Calculate fare
+.TP
+.B 2
+Settings
+.TP
+.B 3
+Help/Manual
+.TP
+.B 4
+Initial setup
+.TP
+.B q
+Quit
+.TP
+.B Tab
+Next input field
+.TP
+.B Shift+Tab
+Previous input field
+.TP
+.B Enter
+Submit/Save
+.TP
+.B Esc
+Back/Cancel
+.SH CONFIGURATION
+Configuration is stored in
+.B ~/.taxiprijs/config.toml
+.PP
+The TOML file can be edited manually or through the Settings screen.
+.PP
+Example configuration:
+.PP
+.RS
+[[passenger_groups]]
+.br
+name = "1-4 passengers"
+.br
+board_fee = 3.50
+.br
+per_minute = 0.50
+.br
+wait_minute = 0.50
+.RE
+.SH FILES
+.TP
+.B ~/.taxiprijs/config.toml
+User configuration file
+.SH EXAMPLES
+.PP
+Calculate a fare:
+.IP 1. 3
+Start the application
+.IP 2. 3
+Select option 1 (Calculate Fare)
+.IP 3. 3
+Enter trip duration in minutes
+.IP 4. 3
+Enter waiting time in minutes
+.IP 5. 3
+Enter number of passengers (1-5)
+.IP 6. 3
+Press Enter to calculate
+.SH EXIT STATUS
+.TP
+.B 0
+Normal exit
+.TP
+.B 1
+Error occurred
+.SH SEE ALSO
+.BRtoml(5)
+.SH BUGS
+Report bugs at https://github.com/jp/taxiprijs/issues
+.SH AUTHOR
+jp
+.SH COPYRIGHT
+MIT License
