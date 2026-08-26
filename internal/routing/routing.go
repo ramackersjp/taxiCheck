@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -21,11 +22,13 @@ type RouteResult struct {
 }
 
 var (
-	osrmURL      string
-	nominatimURL string
-	userAgent    string
-	httpClient   = &http.Client{Timeout: 15 * time.Second}
-	loaded       bool
+	osrmURL       string
+	nominatimURL  string
+	userAgent     string
+	httpClient    = &http.Client{Timeout: 15 * time.Second}
+	loaded        bool
+	nominatimMu   sync.Mutex
+	lastNominatim time.Time
 )
 
 func LoadEnv() {
@@ -65,6 +68,16 @@ type nominatimResult struct {
 	Lon         string `json:"lon"`
 }
 
+func waitForNominatim() {
+	nominatimMu.Lock()
+	defer nominatimMu.Unlock()
+	elapsed := time.Since(lastNominatim)
+	if elapsed < time.Second {
+		time.Sleep(time.Second - elapsed)
+	}
+	lastNominatim = time.Now()
+}
+
 type AddressSuggestion struct {
 	Display string
 	Lat     float64
@@ -85,6 +98,7 @@ type osrmResponse struct {
 
 func Geocode(address string) (float64, float64, error) {
 	LoadEnv()
+	waitForNominatim()
 
 	query := address + ", Netherlands"
 	params := url.Values{
@@ -222,6 +236,7 @@ func CalculateRoute(startAddress, endAddress string, mode string) (*RouteResult,
 
 func SuggestAddresses(query string) ([]AddressSuggestion, error) {
 	LoadEnv()
+	waitForNominatim()
 
 	if len(strings.TrimSpace(query)) < 2 {
 		return nil, nil
