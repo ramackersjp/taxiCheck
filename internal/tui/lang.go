@@ -11,6 +11,9 @@ var translations = map[string]map[string]string{
 		"main_settings":      " Settings",
 		"main_help":          " Help/Manual",
 		"main_setup":         " Initial Setup",
+		"main_update":        " Check for Updates",
+		"main_branch":        " Switch Branch",
+		"main_uninstall":     " Uninstall",
 		"main_quit":          " Quit",
 		"main_select":        "Select an option",
 
@@ -41,6 +44,9 @@ var translations = map[string]map[string]string{
 		"help_settings":      " - Settings",
 		"help_help":          " - Help/Manual",
 		"help_setup":         " - Initial Setup",
+		"help_update":        " - Check for Updates",
+		"help_branch":        " - Switch Branch",
+		"help_uninstall":     " - Uninstall",
 		"help_quit":          " - Quit",
 		"help_tab":           " - Next field",
 		"help_enter":         " - Submit/Save",
@@ -87,6 +93,32 @@ var translations = map[string]map[string]string{
 		"result_total":      "Total:      ",
 		"result_help":       "Press Enter or Esc to calculate again | q: quit",
 
+		// Update
+		"update_title":         "Check for Updates",
+		"update_current":       "Current version: ",
+		"update_available":     "Update available: ",
+		"update_up_to_date":    "You are running the latest version",
+		"update_pull":          " Pull update (git pull)",
+		"update_recheck":       " Re-check for updates",
+		"update_success":       "Update pulled successfully!",
+		"update_help":          "Esc/Enter: back | u: pull update | r: re-check",
+
+		// Branch
+		"branch_title":          "Switch Branch",
+		"branch_current":        "Current branch: ",
+		"branch_list":           "Available branches:",
+		"branch_none":           "No local branches found",
+		"branch_switch_success": "Branch switched successfully!",
+		"branch_help":           "↑/↓: select | Space: switch | Esc/Enter: back",
+
+		// Uninstall
+		"uninstall_title":   "Uninstall TaxiCheck",
+		"uninstall_confirm": "Are you sure you want to uninstall?",
+		"uninstall_yes":     " Yes, uninstall",
+		"uninstall_no":      " No, go back",
+		"uninstall_success": "TaxiCheck has been uninstalled.",
+		"uninstall_help":    "Esc/Enter: back | y: confirm uninstall",
+
 		// Errors
 		"err_invalid_input":    "Invalid input fields",
 		"err_empty_start":      "Please enter a start address",
@@ -109,6 +141,9 @@ var translations = map[string]map[string]string{
 		"main_settings":      " Instellingen",
 		"main_help":          " Help/Handleiding",
 		"main_setup":         " Eerste Installatie",
+		"main_update":        " Controleer op Updates",
+		"main_branch":        " Wissel Branch",
+		"main_uninstall":     " Verwijderen",
 		"main_quit":          " Afsluiten",
 		"main_select":        "Kies een optie",
 
@@ -139,6 +174,9 @@ var translations = map[string]map[string]string{
 		"help_settings":      " - Instellingen",
 		"help_help":          " - Help/Handleiding",
 		"help_setup":         " - Eerste Installatie",
+		"help_update":        " - Controleer op Updates",
+		"help_branch":        " - Wissel Branch",
+		"help_uninstall":     " - Verwijderen",
 		"help_quit":          " - Afsluiten",
 		"help_tab":           " - Volgend veld",
 		"help_enter":         " - Opslaan",
@@ -184,6 +222,32 @@ var translations = map[string]map[string]string{
 		"result_time":       "Tijdkosten:    ",
 		"result_total":      "Totaal:        ",
 		"result_help":       "Druk op Enter of Esc om opnieuw te berekenen | q: afsluiten",
+
+		// Update
+		"update_title":         "Controleer op Updates",
+		"update_current":       "Huidige versie: ",
+		"update_available":     "Update beschikbaar: ",
+		"update_up_to_date":    "Je draait de nieuwste versie",
+		"update_pull":          " Update ophalen (git pull)",
+		"update_recheck":       " Opnieuw controleren",
+		"update_success":       "Update succesvol opgehaald!",
+		"update_help":          "Esc/Enter: terug | u: update ophalen | r: opnieuw controleren",
+
+		// Branch
+		"branch_title":          "Wissel Branch",
+		"branch_current":        "Huidige branch: ",
+		"branch_list":           "Beschikbare branches:",
+		"branch_none":           "Geen lokale branches gevonden",
+		"branch_switch_success": "Branch succesvol gewisseld!",
+		"branch_help":           "↑/↓: selecteer | Space: wissel | Esc/Enter: terug",
+
+		// Uninstall
+		"uninstall_title":   "TaxiCheck Verwijderen",
+		"uninstall_confirm": "Weet je zeker dat je wilt verwijderen?",
+		"uninstall_yes":     " Ja, verwijderen",
+		"uninstall_no":      " Nee, terug",
+		"uninstall_success": "TaxiCheck is succesvol verwijderd.",
+		"uninstall_help":    "Esc/Enter: terug | y: bevestig verwijdering",
 
 		// Errors
 		"err_invalid_input":    "Ongeldige invoervelden",

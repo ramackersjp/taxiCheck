@@ -1,7 +1,10 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -24,7 +27,16 @@ const (
 	screenHelp
 	screenCalc
 	screenResult
+	screenUpdate
+	screenBranch
+	screenUninstall
 )
+
+var appVersion = "dev"
+
+func SetVersion(v string) {
+	appVersion = v
+}
 
 type routeMsg struct {
 	result *calc.FareResult
@@ -43,6 +55,33 @@ type suggestMsg struct {
 	inputIdx int
 	query    string
 	suggests []routing.AddressSuggestion
+}
+
+type updateCheckMsg struct {
+	latestTag string
+	hasUpdate bool
+	err       error
+}
+
+type updateResultMsg struct {
+	success bool
+	err     error
+}
+
+type branchResultMsg struct {
+	current  string
+	branches []string
+	err      error
+}
+
+type branchSwitchMsg struct {
+	success bool
+	err     error
+}
+
+type uninstallResultMsg struct {
+	success bool
+	err     error
 }
 
 type Model struct {
@@ -69,6 +108,16 @@ type Model struct {
 	showSuggest    bool
 	suggestInput   int
 	lastInputVal   string
+
+	latestTag      string
+	hasUpdate      bool
+	updateChecked  bool
+	updateStatus   string
+	currentBranch  string
+	branchList     []string
+	branchIdx      int
+	branchStatus   string
+	uninstallStatus string
 }
 
 func NewModel() Model {
@@ -174,6 +223,63 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showSuggest = len(msg.suggests) > 0
 		}
 		return m, nil
+	case updateCheckMsg:
+		m.loading = false
+		m.updateChecked = true
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		} else {
+			m.latestTag = msg.latestTag
+			m.hasUpdate = msg.hasUpdate
+			if msg.hasUpdate {
+				m.updateStatus = fmt.Sprintf("%s -> %s", appVersion, msg.latestTag)
+			} else {
+				m.updateStatus = t(m.lang, "update_up_to_date")
+			}
+		}
+		return m, nil
+	case updateResultMsg:
+		m.loading = false
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		} else {
+			m.updateStatus = t(m.lang, "update_success")
+			m.hasUpdate = false
+		}
+		return m, nil
+	case branchResultMsg:
+		m.loading = false
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		} else {
+			m.currentBranch = msg.current
+			m.branchList = msg.branches
+			m.branchIdx = 0
+			for i, b := range msg.branches {
+				if b == msg.current {
+					m.branchIdx = i
+					break
+				}
+			}
+		}
+		return m, nil
+	case branchSwitchMsg:
+		m.loading = false
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		} else {
+			m.branchStatus = t(m.lang, "branch_switch_success")
+			m.screen = screenMain
+		}
+		return m, nil
+	case uninstallResultMsg:
+		m.loading = false
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		} else {
+			m.uninstallStatus = t(m.lang, "uninstall_success")
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -197,6 +303,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateCalc(msg)
 	case screenResult:
 		return m.updateResult(msg)
+	case screenUpdate:
+		return m.updateUpdate(msg)
+	case screenBranch:
+		return m.updateBranch(msg)
+	case screenUninstall:
+		return m.updateUninstall(msg)
 	}
 	return m, nil
 }
@@ -265,6 +377,26 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenSetup
 		m.setupStep = 0
 		m.inputs = nil
+		return m, nil
+	case "5":
+		m.screen = screenUpdate
+		m.updateStatus = ""
+		m.err = ""
+		if !m.updateChecked {
+			m.loading = true
+			return m, m.checkUpdate()
+		}
+		return m, nil
+	case "6":
+		m.screen = screenBranch
+		m.branchStatus = ""
+		m.err = ""
+		m.loading = true
+		return m, m.fetchBranches()
+	case "7":
+		m.screen = screenUninstall
+		m.uninstallStatus = ""
+		m.err = ""
 		return m, nil
 	}
 	return m, nil
@@ -409,6 +541,78 @@ func (m Model) updateHelp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) updateUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc", "enter":
+		m.screen = screenMain
+		m.err = ""
+		return m, nil
+	case "u":
+		if m.hasUpdate {
+			m.loading = true
+			m.err = ""
+			return m, m.pullUpdate()
+		}
+		return m, nil
+	case "r":
+		m.loading = true
+		m.err = ""
+		m.updateChecked = false
+		return m, m.checkUpdate()
+	}
+	return m, nil
+}
+
+func (m Model) updateBranch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc", "enter":
+		m.screen = screenMain
+		m.err = ""
+		return m, nil
+	case "up", "k":
+		if len(m.branchList) > 0 {
+			m.branchIdx = (m.branchIdx - 1 + len(m.branchList)) % len(m.branchList)
+		}
+		return m, nil
+	case "down", "j":
+		if len(m.branchList) > 0 {
+			m.branchIdx = (m.branchIdx + 1) % len(m.branchList)
+		}
+		return m, nil
+	case " ":
+		if len(m.branchList) > 0 {
+			target := m.branchList[m.branchIdx]
+			if target != m.currentBranch {
+				m.loading = true
+				m.err = ""
+				return m, m.switchBranch(target)
+			}
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) updateUninstall(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc", "enter":
+		m.screen = screenMain
+		m.err = ""
+		return m, nil
+	case "y", "Y":
+		m.loading = true
+		m.err = ""
+		return m, m.runUninstall()
+	}
+	return m, nil
+}
+
 func (m Model) fetchSuggestions() (tea.Model, tea.Cmd) {
 	if m.focusIdx > 1 || len(m.inputs) < 2 {
 		return m, nil
@@ -497,7 +701,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if i < 2 && newVal != oldVal && len(newVal) >= 2 {
 				m.suggestInput = i
 				m.lastInputVal = newVal
-				return m, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
+				return m, tea.Tick(1*time.Second, func(t time.Time) tea.Msg {
 					return tickMsg(t)
 				})
 			}
@@ -536,6 +740,100 @@ func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 	}
 	return m, nil
+}
+
+func (m Model) checkUpdate() tea.Cmd {
+	return func() tea.Msg {
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Get("https://api.github.com/repos/jp/taxiprijs/releases/latest")
+		if err != nil {
+			return updateCheckMsg{err: err}
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == 404 {
+			return updateCheckMsg{hasUpdate: false}
+		}
+
+		var release struct {
+			TagName string `json:"tag_name"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+			return updateCheckMsg{err: err}
+		}
+
+		hasUpdate := release.TagName != appVersion
+		return updateCheckMsg{
+			latestTag: release.TagName,
+			hasUpdate: hasUpdate,
+		}
+	}
+}
+
+func (m Model) pullUpdate() tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("git", "pull")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return updateResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
+		}
+		return updateResultMsg{success: true}
+	}
+}
+
+func (m Model) fetchBranches() tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("git", "branch", "-a", "--format=%(refname:short)")
+		output, err := cmd.Output()
+		if err != nil {
+			return branchResultMsg{err: err}
+		}
+
+		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+		var branches []string
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "origin/") {
+				continue
+			}
+			if line != "" {
+				branches = append(branches, line)
+			}
+		}
+
+		cmd = exec.Command("git", "branch", "--show-current")
+		current, err := cmd.Output()
+		if err != nil {
+			return branchResultMsg{err: err}
+		}
+
+		return branchResultMsg{
+			current:  strings.TrimSpace(string(current)),
+			branches: branches,
+		}
+	}
+}
+
+func (m Model) switchBranch(branch string) tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("git", "checkout", branch)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return branchSwitchMsg{err: fmt.Errorf("%s: %s", err, string(output))}
+		}
+		return branchSwitchMsg{success: true}
+	}
+}
+
+func (m Model) runUninstall() tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("make", "uninstall")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return uninstallResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
+		}
+		return uninstallResultMsg{success: true}
+	}
 }
 
 func (m Model) startCalculation() (tea.Model, tea.Cmd) {
@@ -703,6 +1001,7 @@ func (m Model) View() string {
 	b.WriteString(GetLogo())
 	b.WriteString("\n")
 	b.WriteString(titleStyle.Render(t(m.lang, "title")))
+	b.WriteString(" " + helpStyle.Render("v"+appVersion))
 	b.WriteString("\n\n")
 
 	switch m.screen {
@@ -718,6 +1017,12 @@ func (m Model) View() string {
 		b.WriteString(m.viewCalc())
 	case screenResult:
 		b.WriteString(m.viewResult())
+	case screenUpdate:
+		b.WriteString(m.viewUpdate())
+	case screenBranch:
+		b.WriteString(m.viewBranch())
+	case screenUninstall:
+		b.WriteString(m.viewUninstall())
 	}
 
 	if m.loading {
@@ -748,7 +1053,17 @@ func (m Model) viewMain() string {
 	b.WriteString(keyStyle.Render("2") + t(m.lang, "main_settings") + "\n")
 	b.WriteString(keyStyle.Render("3") + t(m.lang, "main_help") + "\n")
 	b.WriteString(keyStyle.Render("4") + t(m.lang, "main_setup") + "\n")
+	b.WriteString(keyStyle.Render("5") + t(m.lang, "main_update") + "\n")
+	b.WriteString(keyStyle.Render("6") + t(m.lang, "main_branch") + "\n")
+	b.WriteString(keyStyle.Render("7") + t(m.lang, "main_uninstall") + "\n")
 	b.WriteString(keyStyle.Render("q") + t(m.lang, "main_quit") + "\n")
+
+	if m.branchStatus != "" {
+		b.WriteString("\n")
+		b.WriteString(successStyle.Render(m.branchStatus))
+		m.branchStatus = ""
+	}
+
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "main_select")))
 	return b.String()
@@ -838,6 +1153,9 @@ func (m Model) viewHelp() string {
 	b.WriteString("  " + keyStyle.Render("2") + t(m.lang, "help_settings") + "\n")
 	b.WriteString("  " + keyStyle.Render("3") + t(m.lang, "help_help") + "\n")
 	b.WriteString("  " + keyStyle.Render("4") + t(m.lang, "help_setup") + "\n")
+	b.WriteString("  " + keyStyle.Render("5") + t(m.lang, "help_update") + "\n")
+	b.WriteString("  " + keyStyle.Render("6") + t(m.lang, "help_branch") + "\n")
+	b.WriteString("  " + keyStyle.Render("7") + t(m.lang, "help_uninstall") + "\n")
 	b.WriteString("  " + keyStyle.Render("q") + t(m.lang, "help_quit") + "\n")
 	b.WriteString("  " + keyStyle.Render("Tab") + t(m.lang, "help_tab") + "\n")
 	b.WriteString("  " + keyStyle.Render("Enter") + t(m.lang, "help_enter") + "\n")
@@ -944,5 +1262,80 @@ func (m Model) viewResult() string {
 	}
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "result_help")))
+	return b.String()
+}
+
+func (m Model) viewUpdate() string {
+	var b strings.Builder
+	b.WriteString(subtitleStyle.Render(t(m.lang, "update_title")))
+	b.WriteString("\n\n")
+
+	b.WriteString(t(m.lang, "update_current") + successStyle.Render("v"+appVersion) + "\n")
+	b.WriteString("\n")
+
+	if m.updateStatus != "" {
+		if m.hasUpdate {
+			b.WriteString(t(m.lang, "update_available") + successStyle.Render(m.updateStatus) + "\n")
+			b.WriteString("\n")
+			b.WriteString(keyStyle.Render("u") + " " + t(m.lang, "update_pull") + "\n")
+			b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "update_recheck") + "\n")
+		} else {
+			b.WriteString(successStyle.Render(m.updateStatus) + "\n")
+			b.WriteString("\n")
+			b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "update_recheck") + "\n")
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render(t(m.lang, "update_help")))
+	return b.String()
+}
+
+func (m Model) viewBranch() string {
+	var b strings.Builder
+	b.WriteString(subtitleStyle.Render(t(m.lang, "branch_title")))
+	b.WriteString("\n\n")
+
+	b.WriteString(t(m.lang, "branch_current") + successStyle.Render(m.currentBranch) + "\n\n")
+
+	if len(m.branchList) > 0 {
+		b.WriteString(t(m.lang, "branch_list") + "\n\n")
+		for i, branch := range m.branchList {
+			prefix := "  "
+			if branch == m.currentBranch {
+				prefix = "  " + successStyle.Render("* ")
+			}
+			if i == m.branchIdx && branch != m.currentBranch {
+				b.WriteString(prefix + successStyle.Render("▸ "+branch) + "\n")
+			} else {
+				b.WriteString(prefix + helpStyle.Render(branch) + "\n")
+			}
+		}
+		b.WriteString("\n")
+		b.WriteString(helpStyle.Render(t(m.lang, "branch_help")))
+	} else {
+		b.WriteString(t(m.lang, "branch_none") + "\n")
+		b.WriteString("\n")
+		b.WriteString(helpStyle.Render(t(m.lang, "branch_help")))
+	}
+
+	return b.String()
+}
+
+func (m Model) viewUninstall() string {
+	var b strings.Builder
+	b.WriteString(subtitleStyle.Render(t(m.lang, "uninstall_title")))
+	b.WriteString("\n\n")
+
+	if m.uninstallStatus != "" {
+		b.WriteString(successStyle.Render(m.uninstallStatus) + "\n")
+	} else {
+		b.WriteString(t(m.lang, "uninstall_confirm") + "\n\n")
+		b.WriteString(keyStyle.Render("y") + " " + t(m.lang, "uninstall_yes") + "\n")
+		b.WriteString(keyStyle.Render("n") + " " + t(m.lang, "uninstall_no") + "\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render(t(m.lang, "uninstall_help")))
 	return b.String()
 }

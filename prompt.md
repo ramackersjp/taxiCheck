@@ -70,12 +70,15 @@ taxiprijs/
 - All addresses limited to Netherlands (countrycodes=nl)
 
 ## TUI Screens
-1. Main Menu - Navigation hub
+1. Main Menu - Navigation hub with version display
 2. Calculate Fare - Enter start/destination address and passengers, API calculates route and price
 3. Settings - Modify pricing rates
 4. Help/Manual - Keyboard controls and documentation
 5. Initial Setup - First-run: language selection + pricing configuration
 6. Result - Shows route info (distance, duration) and calculated fare
+7. Check for Updates - Fetch latest version from GitHub, pull updates
+8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.0)
+9. Uninstall - Remove the application from the system
 
 ## Fare Calculation
 - API provides distance (km) and duration (minutes) from route
@@ -102,11 +105,21 @@ taxiprijs/
 - Format with: `gofmt -w .`
 
 ## Git Workflow
-- Development on `dev` branch
-- Never commit directly to `master`
-- Create feature branches from `dev`
-- Test before committing
-- Never commit `.env` (contains API config)
+### Branch Strategy
+- `dev` - Development branch. **Chaotic, unstable, may break at any time.** All new features are developed here first. This is the default development branch.
+- `main` - Stable releases only. Never commit directly to `main`.
+- `v1.0.0` - Stable release branch. This is the current stable version. Bug fixes only.
+- Feature branches - Created from `dev` for each new feature (e.g. `feature/menu-extensions`).
+
+### Rules
+1. Development happens on `dev` branch
+2. Never commit directly to `main` or stable release branches
+3. Create feature branches from `dev` for new features
+4. Test before committing
+5. Never commit `.env` (contains API config)
+6. For new features, always branch from `dev`, not from stable releases
+7. The `dev` branch may be chaotic and unstable
+8. The stable release branch (currently `v1.0.0`) is for production use
 
 ## Dependencies
 - github.com/charmbracelet/bubbletea
@@ -140,6 +153,11 @@ taxiprijs/
 - Keyboard-only navigation
 - English and Dutch language support
 - Fastest/shortest route mode toggle (press 'r' on calc screen)
+- Version display in main menu
+- Check for updates from GitHub
+- Pull updates via git pull from the TUI
+- Switch between dev and stable branches from the TUI
+- Uninstall from the main menu
 
 ## Installation
 
