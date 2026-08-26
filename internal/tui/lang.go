@@ -112,12 +112,14 @@ var translations = map[string]map[string]string{
 		"branch_help":           "↑/↓: select | Space: switch | Esc/Enter: back",
 
 		// Uninstall
-		"uninstall_title":   "Uninstall TaxiCheck",
-		"uninstall_confirm": "Are you sure you want to uninstall?",
-		"uninstall_yes":     " Yes, uninstall",
-		"uninstall_no":      " No, go back",
-		"uninstall_success": "TaxiCheck has been uninstalled.",
-		"uninstall_help":    "Esc/Enter: back | y: confirm uninstall",
+		"uninstall_title":      "Uninstall TaxiCheck",
+		"uninstall_confirm":    "Are you sure you want to uninstall TaxiCheck?",
+		"uninstall_yes":        " Yes, continue",
+		"uninstall_no":         " No, go back",
+		"uninstall_final":      "WARNING: This will remove all TaxiCheck files. Are you REALLY sure?",
+		"uninstall_final_yes":  " Yes, uninstall now",
+		"uninstall_success":    "TaxiCheck has been uninstalled.",
+		"uninstall_help":       "Esc: back | y: yes | n: no",
 
 		// Errors
 		"err_invalid_input":    "Invalid input fields",
@@ -242,12 +244,14 @@ var translations = map[string]map[string]string{
 		"branch_help":           "↑/↓: selecteer | Space: wissel | Esc/Enter: terug",
 
 		// Uninstall
-		"uninstall_title":   "TaxiCheck Verwijderen",
-		"uninstall_confirm": "Weet je zeker dat je wilt verwijderen?",
-		"uninstall_yes":     " Ja, verwijderen",
-		"uninstall_no":      " Nee, terug",
-		"uninstall_success": "TaxiCheck is succesvol verwijderd.",
-		"uninstall_help":    "Esc/Enter: terug | y: bevestig verwijdering",
+		"uninstall_title":      "TaxiCheck Verwijderen",
+		"uninstall_confirm":    "Weet je zeker dat je TaxiCheck wilt verwijderen?",
+		"uninstall_yes":        " Ja, doorgaan",
+		"uninstall_no":         " Nee, terug",
+		"uninstall_final":      "WAARSCHUWING: Dit verwijdert alle TaxiCheck bestanden. Weet je het HELEMAAL zeker?",
+		"uninstall_final_yes":  " Ja, nu verwijderen",
+		"uninstall_success":    "TaxiCheck is succesvol verwijderd.",
+		"uninstall_help":       "Esc: terug | y: ja | n: nee",
 
 		// Errors
 		"err_invalid_input":    "Ongeldige invoervelden",

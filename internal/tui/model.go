@@ -117,6 +117,7 @@ type Model struct {
 	branchList     []string
 	branchIdx      int
 	branchStatus   string
+	uninstallStep  int
 	uninstallStatus string
 }
 
@@ -395,6 +396,7 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.fetchBranches()
 	case "7":
 		m.screen = screenUninstall
+		m.uninstallStep = 0
 		m.uninstallStatus = ""
 		m.err = ""
 		return m, nil
@@ -601,14 +603,25 @@ func (m Model) updateUninstall(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
-	case "esc", "enter":
+	case "esc":
+		m.screen = screenMain
+		m.err = ""
+		return m, nil
+	case "n", "N":
 		m.screen = screenMain
 		m.err = ""
 		return m, nil
 	case "y", "Y":
-		m.loading = true
-		m.err = ""
-		return m, m.runUninstall()
+		if m.uninstallStep == 0 {
+			m.uninstallStep = 1
+			return m, nil
+		}
+		if m.uninstallStep == 1 {
+			m.loading = true
+			m.err = ""
+			return m, m.runUninstall()
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -997,13 +1010,6 @@ func (m Model) saveSettings() (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var b strings.Builder
 
-	b.WriteString("\n")
-	b.WriteString(GetLogo())
-	b.WriteString("\n")
-	b.WriteString(titleStyle.Render(t(m.lang, "title")))
-	b.WriteString(" " + helpStyle.Render("v"+appVersion))
-	b.WriteString("\n\n")
-
 	switch m.screen {
 	case screenMain:
 		b.WriteString(m.viewMain())
@@ -1039,10 +1045,19 @@ func (m Model) View() string {
 		Width(m.contentWidth()).
 		Render(b.String())
 
+	var full strings.Builder
+	full.WriteString("\n")
+	full.WriteString(GetLogoCentered(m.width))
+	full.WriteString("\n")
+	full.WriteString(titleStyle.Render(t(m.lang, "title")))
+	full.WriteString(" " + helpStyle.Render("v"+appVersion))
+	full.WriteString("\n\n")
+	full.WriteString(content)
+
 	if m.height > 0 {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, full.String())
 	}
-	return content
+	return full.String()
 }
 
 func (m Model) viewMain() string {
@@ -1329,9 +1344,13 @@ func (m Model) viewUninstall() string {
 
 	if m.uninstallStatus != "" {
 		b.WriteString(successStyle.Render(m.uninstallStatus) + "\n")
-	} else {
+	} else if m.uninstallStep == 0 {
 		b.WriteString(t(m.lang, "uninstall_confirm") + "\n\n")
 		b.WriteString(keyStyle.Render("y") + " " + t(m.lang, "uninstall_yes") + "\n")
+		b.WriteString(keyStyle.Render("n") + " " + t(m.lang, "uninstall_no") + "\n")
+	} else {
+		b.WriteString(errorStyle.Render(t(m.lang, "uninstall_final")) + "\n\n")
+		b.WriteString(keyStyle.Render("y") + " " + t(m.lang, "uninstall_final_yes") + "\n")
 		b.WriteString(keyStyle.Render("n") + " " + t(m.lang, "uninstall_no") + "\n")
 	}
 

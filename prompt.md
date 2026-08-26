@@ -32,7 +32,7 @@ taxiprijs/
 │       ├── model.go               # Main model with all screens
 │       ├── style.go               # Lip Gloss styling
 │       ├── lang.go                # EN/NL translations
-│       └── logo.go                # ASCII taxi logo
+│       └── logo.go                # ASCII taxi logo (Unicode block art)
 ├── extras/
 │   ├── taxiprijs.desktop           # Linux desktop entry
 │   └── omarchy-plugin/            # Omarchy Quattro bar-widget
@@ -55,6 +55,8 @@ taxiprijs/
 4. Minimal dependencies
 5. OpenStreetMap for free, open-source route calculation
 6. API configuration via .env file
+7. Unicode block art logo (centered above content border)
+8. Two-step uninstall confirmation for safety
 
 ## Configuration Model
 - Stored in `~/.taxiprijs/config.toml`
@@ -78,7 +80,18 @@ taxiprijs/
 6. Result - Shows route info (distance, duration) and calculated fare
 7. Check for Updates - Fetch latest version from GitHub, pull updates
 8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.0)
-9. Uninstall - Remove the application from the system
+9. Uninstall - Two-step confirmation, then removes the application
+
+## Logo
+- Unicode block art taxi rendered centered above the content border
+- Yellow-themed, consistent with the app's visual style
+- Uses `GetLogoCentered(width)` for proper centering
+
+## Uninstall Safety
+- Step 1: "Are you sure you want to uninstall?" (y/n)
+- Step 2: "WARNING: This will remove all files. Are you REALLY sure?" (y/n)
+- Only proceeds with actual uninstall after both confirmations
+- Uses `make uninstall` to remove binary and desktop entry
 
 ## Fare Calculation
 - API provides distance (km) and duration (minutes) from route
@@ -109,7 +122,7 @@ taxiprijs/
 - `dev` - Development branch. **Chaotic, unstable, may break at any time.** All new features are developed here first. This is the default development branch.
 - `main` - Stable releases only. Never commit directly to `main`.
 - `v1.0.0` - Stable release branch. This is the current stable version. Bug fixes only.
-- Feature branches - Created from `dev` for each new feature (e.g. `feature/menu-extensions`).
+- Feature branches - Created from `dev` for each new feature (e.g. `feature/logo-and-uninstall-safety`).
 
 ### Rules
 1. Development happens on `dev` branch
@@ -148,8 +161,7 @@ taxiprijs/
 - Settings screen for rate modification
 - Initial setup wizard (language + pricing)
 - Help/Manual screen
-- Yellow taxi-inspired UI
-- ASCII taxi logo
+- Yellow taxi-inspired UI with Unicode block art logo
 - Keyboard-only navigation
 - English and Dutch language support
 - Fastest/shortest route mode toggle (press 'r' on calc screen)
@@ -157,7 +169,7 @@ taxiprijs/
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI
 - Switch between dev and stable branches from the TUI
-- Uninstall from the main menu
+- Two-step uninstall confirmation from the main menu
 
 ## Installation
 
