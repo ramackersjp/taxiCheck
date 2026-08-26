@@ -62,7 +62,15 @@ Development branch - may be unstable
 .B v1.0.0
 Stable release branch
 .SH UNINSTALLING
-Option 7 in the main menu removes the binary and desktop entry via
+Option 7 in the main menu starts the uninstall process.
+.PP
+The uninstall requires two confirmations for safety:
+.IP 1. 3
+First: "Are you sure you want to uninstall?" (y/n)
+.IP 2. 3
+Second: "WARNING: This will remove all files. Are you REALLY sure?" (y/n)
+.PP
+After both confirmations, the binary and desktop entry are removed via
 .BR make uninstall (1).
 .SH CONFIGURATION
 Configuration is stored in
