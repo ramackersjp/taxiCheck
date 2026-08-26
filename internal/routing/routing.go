@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,18 +16,31 @@ import (
 )
 
 type RouteResult struct {
-	DistanceKm float64
+	DistanceKm  float64
 	DurationMin float64
 }
 
 var (
-	osrmURL     string
+	osrmURL      string
 	nominatimURL string
-	userAgent   string
-	httpClient  = &http.Client{Timeout: 15 * time.Second}
+	userAgent    string
+	httpClient   = &http.Client{Timeout: 15 * time.Second}
+	loaded       bool
 )
 
-func init() {
+func LoadEnv() {
+	if loaded {
+		return
+	}
+	loaded = true
+
+	// Try to find .env next to the executable
+	exe, err := os.Executable()
+	if err == nil {
+		envPath := filepath.Join(filepath.Dir(exe), ".env")
+		godotenv.Load(envPath)
+	}
+	// Also try current directory
 	godotenv.Load()
 
 	osrmURL = os.Getenv("OSRM_URL")
@@ -58,17 +72,18 @@ type osrmRoute struct {
 }
 
 type osrmResponse struct {
-	Code   string     `json:"code"`
+	Code   string      `json:"code"`
 	Routes []osrmRoute `json:"routes"`
 }
 
 func Geocode(address string) (float64, float64, error) {
-	// Limit to Netherlands
+	LoadEnv()
+
 	query := address + ", Netherlands"
 	params := url.Values{
-		"q":        {query},
-		"format":   {"json"},
-		"limit":    {"1"},
+		"q":            {query},
+		"format":       {"json"},
+		"limit":        {"1"},
 		"countrycodes": {"nl"},
 	}
 
@@ -86,7 +101,8 @@ func Geocode(address string) (float64, float64, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return 0, 0, fmt.Errorf("geocoding returned status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return 0, 0, fmt.Errorf("geocoding returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -116,6 +132,8 @@ func Geocode(address string) (float64, float64, error) {
 }
 
 func GetRoute(lat1, lon1, lat2, lon2 float64) (*RouteResult, error) {
+	LoadEnv()
+
 	coords := fmt.Sprintf("%f,%f;%f,%f", lon1, lat1, lon2, lat2)
 	reqURL := fmt.Sprintf("%s/route/v1/driving/%s?overview=false", osrmURL, coords)
 
@@ -126,7 +144,8 @@ func GetRoute(lat1, lon1, lat2, lon2 float64) (*RouteResult, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("routing returned status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("routing returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
