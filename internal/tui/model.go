@@ -688,7 +688,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
-	case "r":
+	case "f2":
 		if m.routeMode == "fastest" {
 			m.routeMode = "shortest"
 		} else {

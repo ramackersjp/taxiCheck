@@ -79,7 +79,7 @@ var translations = map[string]map[string]string{
 		"calc_mode":               "Route",
 		"calc_mode_fastest":       "Fastest",
 		"calc_mode_shortest":      "Shortest",
-		"calc_help":               "Tab: next field | r: route mode | Enter: calculate | Esc: cancel",
+		"calc_help":               "Tab: next field | F2: route mode | Enter: calculate | Esc: cancel",
 
 		// Loading
 		"loading": "Calculating route...",
@@ -215,7 +215,7 @@ var translations = map[string]map[string]string{
 		"calc_mode":               "Route",
 		"calc_mode_fastest":       "Snelste",
 		"calc_mode_shortest":      "Kortste",
-		"calc_help":               "Tab: volgend veld | r: route type | Enter: berekenen | Esc: annuleren",
+		"calc_help":               "Tab: volgend veld | F2: route type | Enter: berekenen | Esc: annuleren",
 
 		// Loading
 		"loading": "Route berekenen...",
