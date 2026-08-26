@@ -288,7 +288,7 @@ func (m Model) updateSetupPricing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	for i := range m.inputs {
 		if i == m.focusIdx {
-			m.inputs[i].Update(msg)
+			m.inputs[i], _ = m.inputs[i].Update(msg)
 		}
 	}
 	return m, nil
@@ -320,7 +320,7 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	for i := range m.inputs {
 		if i == m.focusIdx {
-			m.inputs[i].Update(msg)
+			m.inputs[i], _ = m.inputs[i].Update(msg)
 		}
 	}
 	return m, nil
@@ -363,7 +363,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	for i := range m.inputs {
 		if i == m.focusIdx {
-			m.inputs[i].Update(msg)
+			m.inputs[i], _ = m.inputs[i].Update(msg)
 		}
 	}
 	return m, nil
