@@ -30,11 +30,15 @@ var translations = map[string]map[string]string{
 		"setup_wait_minute":   " Wait Minute",
 
 		// Settings
-		"settings_title":      "Settings",
-		"settings_help":       "Tab: next field | Enter: save | Esc: cancel",
-		"settings_board_fee":  " Board Fee",
-		"settings_per_km":     " Per Km",
-		"settings_per_minute": " Per Minute",
+		"settings_title":       "Settings",
+		"settings_lang_title":  "Select Language",
+		"settings_lang_en":     "English",
+		"settings_lang_nl":     "Nederlands",
+		"settings_lang_help":   "Use 1/2 to select, Enter to continue",
+		"settings_help":        "Tab: next field | Enter: save | Esc: back",
+		"settings_board_fee":   " Board Fee",
+		"settings_per_km":      " Per Km",
+		"settings_per_minute":  " Per Minute",
 		"settings_wait_minute": " Wait Minute",
 
 		// Help
@@ -162,11 +166,15 @@ var translations = map[string]map[string]string{
 		"setup_wait_minute":   " Wacht",
 
 		// Settings
-		"settings_title":      "Instellingen",
-		"settings_help":       "Tab: volgend veld | Enter: opslaan | Esc: annuleren",
-		"settings_board_fee":  " Instap",
-		"settings_per_km":     " Per km",
-		"settings_per_minute": " Per min",
+		"settings_title":       "Instellingen",
+		"settings_lang_title":  "Kies Taal",
+		"settings_lang_en":     "English",
+		"settings_lang_nl":     "Nederlands",
+		"settings_lang_help":   "Gebruik 1/2 om te kiezen, Enter om door te gaan",
+		"settings_help":        "Tab: volgend veld | Enter: opslaan | Esc: terug",
+		"settings_board_fee":   " Instap",
+		"settings_per_km":      " Per km",
+		"settings_per_minute":  " Per min",
 		"settings_wait_minute": " Wacht",
 
 		// Help

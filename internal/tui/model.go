@@ -119,6 +119,8 @@ type Model struct {
 	branchStatus   string
 	uninstallStep  int
 	uninstallStatus string
+	settingsStep   int
+	settingsLang   string
 }
 
 func NewModel() Model {
@@ -338,40 +340,11 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 	case "2":
 		m.screen = screenSettings
-		m.inputs = make([]textinput.Model, len(m.config.PassengerGroups)*4)
-		pw := m.priceInputWidth()
-		j := 0
-		for i, g := range m.config.PassengerGroups {
-			m.inputs[j] = textinput.New()
-			m.inputs[j].Placeholder = fmt.Sprintf("Group %d board fee", i+1)
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.BoardFee))
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].Placeholder = fmt.Sprintf("Group %d per km", i+1)
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerKm))
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].Placeholder = fmt.Sprintf("Group %d per minute", i+1)
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerMinute))
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].Placeholder = fmt.Sprintf("Group %d wait minute", i+1)
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			j++
-		}
-		m.focusIdx = 0
-		if len(m.inputs) > 0 {
-			m.inputs[0].Focus()
-		}
-		return m, textinput.Blink
+		m.settingsStep = 0
+		m.settingsLang = m.lang
+		m.inputs = nil
+		m.err = ""
+		return m, nil
 	case "3":
 		m.screen = screenHelp
 	case "4":
@@ -504,6 +477,75 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
+	case "esc":
+		if m.settingsStep == 0 {
+			m.screen = screenMain
+			m.err = ""
+			return m, nil
+		}
+		m.settingsStep = 0
+		m.inputs = nil
+		m.err = ""
+		return m, nil
+	}
+
+	if m.settingsStep == 0 {
+		return m.updateSettingsLang(msg)
+	}
+	return m.updateSettingsPricing(msg)
+}
+
+func (m Model) updateSettingsLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "1", "up", "down":
+		if msg.String() == "1" || msg.String() == "up" {
+			m.settingsLang = "en"
+		} else {
+			m.settingsLang = "nl"
+		}
+		return m, nil
+	case "2":
+		m.settingsLang = "nl"
+		return m, nil
+	case "enter":
+		m.lang = m.settingsLang
+		m.config.Language = m.lang
+		m.settingsStep = 1
+		m.inputs = make([]textinput.Model, len(m.config.PassengerGroups)*4)
+		pw := m.priceInputWidth()
+		j := 0
+		for _, g := range m.config.PassengerGroups {
+			m.inputs[j] = textinput.New()
+			m.inputs[j].CharLimit = 10
+			m.inputs[j].Width = pw
+			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.BoardFee))
+			j++
+			m.inputs[j] = textinput.New()
+			m.inputs[j].CharLimit = 10
+			m.inputs[j].Width = pw
+			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerKm))
+			j++
+			m.inputs[j] = textinput.New()
+			m.inputs[j].CharLimit = 10
+			m.inputs[j].Width = pw
+			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerMinute))
+			j++
+			m.inputs[j] = textinput.New()
+			m.inputs[j].CharLimit = 10
+			m.inputs[j].Width = pw
+			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
+			j++
+		}
+		if len(m.inputs) > 0 {
+			m.inputs[0].Focus()
+		}
+		return m, textinput.Blink
+	}
+	return m, nil
+}
+
+func (m Model) updateSettingsPricing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
 	case "tab", "shift+tab":
 		if len(m.inputs) == 0 {
 			return m, nil
@@ -518,10 +560,6 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 	case "enter":
 		return m.saveSettings()
-	case "esc":
-		m.screen = screenMain
-		m.err = ""
-		return m, nil
 	}
 
 	for i := range m.inputs {
@@ -1131,6 +1169,23 @@ func (m Model) viewSettings() string {
 	var b strings.Builder
 	b.WriteString(subtitleStyle.Render(t(m.lang, "settings_title")))
 	b.WriteString("\n\n")
+
+	if m.settingsStep == 0 {
+		b.WriteString(titleStyle.Render(t(m.lang, "settings_lang_title")))
+		b.WriteString("\n\n")
+		b.WriteString(keyStyle.Render("1") + " " + t(m.lang, "settings_lang_en") + "\n")
+		b.WriteString(keyStyle.Render("2") + " " + t(m.lang, "settings_lang_nl") + "\n")
+		b.WriteString("\n")
+		if m.settingsLang == "en" {
+			b.WriteString("  > " + t(m.lang, "settings_lang_en") + " <\n")
+		} else {
+			b.WriteString("  > " + t(m.lang, "settings_lang_nl") + " <\n")
+		}
+		b.WriteString("\n")
+		b.WriteString(helpStyle.Render(t(m.lang, "settings_lang_help")))
+		return b.String()
+	}
+
 	for i, g := range m.config.PassengerGroups {
 		b.WriteString(titleStyle.Render(g.Name))
 		b.WriteString("\n")
