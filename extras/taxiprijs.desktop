@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=TaxiCheck
+Comment=Taxi fare calculator with routing
+Exec=taxiprijs
+Icon=utilities-terminal
+Terminal=true
+Categories=Utility;
+Keywords=taxi;fare;route;
+StartupNotify=false

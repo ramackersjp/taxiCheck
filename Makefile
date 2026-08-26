@@ -1,0 +1,38 @@
+APP_NAME := taxiprijs
+VERSION  := 1.0.0
+GOFLAGS  := -trimpath
+LDFLAGS  := -s -w -X main.version=$(VERSION)
+
+# Cross-compile targets
+.PHONY: build build-linux build-macos build-windows install uninstall clean
+
+build:
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(APP_NAME) ./cmd/taxiprijs
+
+build-linux:
+	GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(APP_NAME)-linux-amd64 ./cmd/taxiprijs
+	GOOS=linux GOARCH=arm64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(APP_NAME)-linux-arm64 ./cmd/taxiprijs
+
+build-macos:
+	GOOS=darwin GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(APP_NAME)-macos-amd64 ./cmd/taxiprijs
+	GOOS=darwin GOARCH=arm64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(APP_NAME)-macos-arm64 ./cmd/taxiprijs
+
+build-windows:
+	GOOS=windows GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(APP_NAME)-windows-amd64.exe ./cmd/taxiprijs
+
+build-all: build-linux build-macos build-windows
+	@echo "Builds complete in dist/"
+
+install: build
+	sudo install -Dm755 $(APP_NAME) /usr/local/bin/$(APP_NAME)
+	sudo install -Dm644 extras/$(APP_NAME).desktop /usr/share/applications/$(APP_NAME).desktop
+	@echo "Installed: /usr/local/bin/$(APP_NAME)"
+	@echo "Desktop entry: /usr/share/applications/$(APP_NAME).desktop"
+
+uninstall:
+	sudo rm -f /usr/local/bin/$(APP_NAME)
+	sudo rm -f /usr/share/applications/$(APP_NAME).desktop
+	@echo "Uninstalled"
+
+clean:
+	rm -rf dist/ $(APP_NAME)

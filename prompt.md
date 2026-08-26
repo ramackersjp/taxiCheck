@@ -8,6 +8,8 @@ Dutch taxi fare calculator TUI application built with Go and Bubble Tea. Uses Op
 - All core features implemented
 - Tests passing
 - Documentation complete
+- Cross-platform installable (Linux, macOS, Windows)
+- Omarchy Quattro bar-widget plugin
 
 ## Technology Stack
 - Go 1.21+
@@ -31,9 +33,15 @@ taxiprijs/
 │       ├── style.go               # Lip Gloss styling
 │       ├── lang.go                # EN/NL translations
 │       └── logo.go                # ASCII taxi logo
+├── extras/
+│   ├── taxiprijs.desktop           # Linux desktop entry
+│   └── omarchy-plugin/            # Omarchy Quattro bar-widget
+│       ├── manifest.json
+│       └── BarWidget.qml
 ├── .env.example                   # API configuration template
 ├── .env                           # API configuration (git-ignored)
 ├── go.mod
+├── Makefile                       # Build, install, cross-compile
 ├── LICENSE
 ├── README.md
 ├── taxiprijs.1                    # Man page
@@ -131,3 +139,62 @@ taxiprijs/
 - ASCII taxi logo
 - Keyboard-only navigation
 - English and Dutch language support
+- Fastest/shortest route mode toggle (press 'r' on calc screen)
+
+## Installation
+
+### Linux / Omarchy Quattro
+
+```sh
+# Build and install binary + desktop entry
+make install
+
+# Run from terminal
+taxiprijs
+
+# Run from launcher (Omarchy / Ubuntu app grid)
+# TaxiCheck appears as a desktop app
+
+# Cross-compile for other platforms
+make build-all        # all platforms -> dist/
+make build-linux      # Linux only
+make build-macos      # macOS only
+make build-windows    # Windows only
+```
+
+### Omarchy Quattro Bar Widget
+
+A QuickShell bar-widget plugin is included. It adds a taxi icon to the
+Omarchy bar that launches the TUI in a terminal.
+
+```sh
+# Install plugin locally
+PLUGIN_DIR="$HOME/.config/omarchy/plugins/jp.taxiprijs"
+mkdir -p "$PLUGIN_DIR"
+cp extras/omarchy-plugin/* "$PLUGIN_DIR/"
+omarchy-shell shell rescanPlugins
+```
+
+Then add `{ "id": "jp.taxiprijs" }` to your bar layout in
+`~/.config/omarchy/shell.json`.
+
+### macOS
+
+```sh
+# Build
+make build
+
+# Install binary
+sudo cp taxiprijs /usr/local/bin/taxiprijs
+```
+
+### Windows
+
+Use `make build-windows` or cross-compile from any OS. The resulting
+`.exe` runs in any Windows terminal.
+
+### Uninstall
+
+```sh
+make uninstall
+```
