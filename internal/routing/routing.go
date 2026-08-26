@@ -60,8 +60,15 @@ func LoadEnv() {
 }
 
 type nominatimResult struct {
-	Lat string `json:"lat"`
-	Lon string `json:"lon"`
+	DisplayName string `json:"display_name"`
+	Lat         string `json:"lat"`
+	Lon         string `json:"lon"`
+}
+
+type AddressSuggestion struct {
+	Display string
+	Lat     float64
+	Lon     float64
 }
 
 type osrmRoute struct {
@@ -211,4 +218,65 @@ func CalculateRoute(startAddress, endAddress string, mode string) (*RouteResult,
 	}
 
 	return result, nil
+}
+
+func SuggestAddresses(query string) ([]AddressSuggestion, error) {
+	LoadEnv()
+
+	if len(strings.TrimSpace(query)) < 2 {
+		return nil, nil
+	}
+
+	params := url.Values{
+		"q":            {query + ", Netherlands"},
+		"format":       {"json"},
+		"limit":        {"5"},
+		"countrycodes": {"nl"},
+	}
+
+	reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []nominatimResult
+	if err := json.Unmarshal(body, &results); err != nil {
+		return nil, err
+	}
+
+	var suggestions []AddressSuggestion
+	for _, r := range results {
+		lat, err := strconv.ParseFloat(r.Lat, 64)
+		if err != nil {
+			continue
+		}
+		lon, err := strconv.ParseFloat(r.Lon, 64)
+		if err != nil {
+			continue
+		}
+		suggestions = append(suggestions, AddressSuggestion{
+			Display: r.DisplayName,
+			Lat:     lat,
+			Lon:     lon,
+		})
+	}
+
+	return suggestions, nil
 }

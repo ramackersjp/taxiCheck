@@ -19,7 +19,7 @@ BarWidget {
     onPressed: function(btn) {
       if (!root.bar) return
       if (btn === Qt.LeftButton) {
-        root.bar.run("alacritty -e taxiprijs")
+        root.bar.run("alacritty -e /home/jp/Code/taxiprijs/taxiprijs")
       }
     }
   }

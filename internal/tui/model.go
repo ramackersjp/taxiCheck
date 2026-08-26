@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -35,6 +36,14 @@ type routeErrMsg struct {
 	err error
 }
 
+type tickMsg time.Time
+
+type suggestMsg struct {
+	inputIdx int
+	query    string
+	suggests []routing.AddressSuggestion
+}
+
 type Model struct {
 	screen    screen
 	config    *config.Config
@@ -51,6 +60,12 @@ type Model struct {
 	setupStep int
 	loading   bool
 	routeMode string
+
+	suggestions    []routing.AddressSuggestion
+	suggestionIdx  int
+	showSuggest    bool
+	suggestInput   int
+	lastInputVal   string
 }
 
 func NewModel() Model {
@@ -106,6 +121,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case routeErrMsg:
 		m.loading = false
 		m.err = msg.err.Error()
+		return m, nil
+	case tickMsg:
+		return m.fetchSuggestions()
+	case suggestMsg:
+		if msg.inputIdx == m.suggestInput && m.lastInputVal == msg.query {
+			m.suggestions = msg.suggests
+			m.suggestionIdx = 0
+			m.showSuggest = len(msg.suggests) > 0
+		}
 		return m, nil
 	}
 
@@ -339,6 +363,20 @@ func (m Model) updateHelp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) fetchSuggestions() (tea.Model, tea.Cmd) {
+	if m.focusIdx > 1 || len(m.inputs) < 2 {
+		return m, nil
+	}
+	query := m.inputs[m.focusIdx].Value()
+	inputIdx := m.focusIdx
+	q := query
+
+	return m, func() tea.Msg {
+		suggests, _ := routing.SuggestAddresses(q)
+		return suggestMsg{inputIdx: inputIdx, query: q, suggests: suggests}
+	}
+}
+
 func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
@@ -350,7 +388,48 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.routeMode = "fastest"
 		}
 		return m, nil
+	case "down", "up":
+		if m.showSuggest {
+			if msg.String() == "down" {
+				m.suggestionIdx = (m.suggestionIdx + 1) % len(m.suggestions)
+			} else {
+				m.suggestionIdx = (m.suggestionIdx - 1 + len(m.suggestions)) % len(m.suggestions)
+			}
+			return m, nil
+		}
+		if len(m.inputs) == 0 {
+			return m, nil
+		}
+		m.inputs[m.focusIdx].Blur()
+		if msg.String() == "down" {
+			m.focusIdx = (m.focusIdx + 1) % len(m.inputs)
+		} else {
+			m.focusIdx = (m.focusIdx - 1 + len(m.inputs)) % len(m.inputs)
+		}
+		m.inputs[m.focusIdx].Focus()
+		m.showSuggest = false
+		return m, textinput.Blink
+	case "enter":
+		if m.showSuggest && m.suggestionIdx < len(m.suggestions) {
+			sel := m.suggestions[m.suggestionIdx]
+			m.inputs[m.focusIdx].SetValue(sel.Display)
+			m.showSuggest = false
+			m.suggestions = nil
+			return m, nil
+		}
+		return m.startCalculation()
+	case "esc":
+		if m.showSuggest {
+			m.showSuggest = false
+			m.suggestions = nil
+			return m, nil
+		}
+		m.screen = screenMain
+		m.err = ""
+		return m, nil
 	case "tab", "shift+tab":
+		m.showSuggest = false
+		m.suggestions = nil
 		if len(m.inputs) == 0 {
 			return m, nil
 		}
@@ -362,17 +441,24 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.inputs[m.focusIdx].Focus()
 		return m, textinput.Blink
-	case "enter":
-		return m.startCalculation()
-	case "esc":
-		m.screen = screenMain
-		m.err = ""
-		return m, nil
 	}
 
 	for i := range m.inputs {
 		if i == m.focusIdx {
+			oldVal := m.inputs[i].Value()
 			m.inputs[i], _ = m.inputs[i].Update(msg)
+			newVal := m.inputs[i].Value()
+			if i < 2 && newVal != oldVal && len(newVal) >= 2 {
+				m.suggestInput = i
+				m.lastInputVal = newVal
+				return m, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
+					return tickMsg(t)
+				})
+			}
+			if i < 2 && newVal != oldVal {
+				m.showSuggest = false
+				m.suggestions = nil
+			}
 		}
 	}
 	return m, nil
@@ -728,9 +814,17 @@ func (m Model) viewCalc() string {
 	b.WriteString("\n\n")
 	if len(m.inputs) >= 3 {
 		b.WriteString(m.inputs[0].View() + "\n")
-		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_start")) + "\n\n")
+		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_start")) + "\n")
+		if m.showSuggest && m.suggestInput == 0 {
+			b.WriteString(m.renderSuggestions())
+		}
+		b.WriteString("\n")
 		b.WriteString(m.inputs[1].View() + "\n")
-		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_end")) + "\n\n")
+		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_end")) + "\n")
+		if m.showSuggest && m.suggestInput == 1 {
+			b.WriteString(m.renderSuggestions())
+		}
+		b.WriteString("\n")
 		b.WriteString(m.inputs[2].View() + "\n")
 		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_passengers")) + "\n")
 	}
@@ -742,6 +836,22 @@ func (m Model) viewCalc() string {
 	}
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "calc_help")))
+	return b.String()
+}
+
+func (m Model) renderSuggestions() string {
+	var b strings.Builder
+	for i, s := range m.suggestions {
+		display := s.Display
+		if len(display) > 60 {
+			display = display[:57] + "..."
+		}
+		if i == m.suggestionIdx {
+			b.WriteString("  " + successStyle.Render("▸ "+display) + "\n")
+		} else {
+			b.WriteString("  " + helpStyle.Render("  "+display) + "\n")
+		}
+	}
 	return b.String()
 }
 
