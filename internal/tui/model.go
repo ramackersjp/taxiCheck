@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/jp/taxiprijs/internal/calc"
 	"github.com/jp/taxiprijs/internal/config"
@@ -60,6 +61,8 @@ type Model struct {
 	setupStep int
 	loading   bool
 	routeMode string
+	width     int
+	height    int
 
 	suggestions    []routing.AddressSuggestion
 	suggestionIdx  int
@@ -105,8 +108,48 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
+func (m Model) inputWidth() int {
+	w := m.width - 14
+	if w < 20 {
+		w = 20
+	}
+	if w > 50 {
+		w = 50
+	}
+	return w
+}
+
+func (m Model) priceInputWidth() int {
+	w := m.width - 30
+	if w < 10 {
+		w = 10
+	}
+	if w > 15 {
+		w = 15
+	}
+	return w
+}
+
+func (m Model) contentWidth() int {
+	w := m.width - 6
+	if w < 30 {
+		w = 30
+	}
+	return w
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		inputW := m.inputWidth()
+		for i := range m.inputs {
+			if i < 2 {
+				m.inputs[i].Width = inputW
+			}
+		}
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	case routeMsg:
@@ -166,10 +209,11 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenCalc
 		m.calcInput = calc.FareInput{}
 		m.inputs = make([]textinput.Model, 3)
+		inputW := m.inputWidth()
 		for i := range m.inputs {
 			m.inputs[i] = textinput.New()
 			m.inputs[i].CharLimit = 80
-			m.inputs[i].Width = 40
+			m.inputs[i].Width = inputW
 		}
 		m.inputs[0].Placeholder = t(m.lang, "calc_placeholder_start")
 		m.inputs[0].Focus()
@@ -182,31 +226,32 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "2":
 		m.screen = screenSettings
 		m.inputs = make([]textinput.Model, len(m.config.PassengerGroups)*4)
+		pw := m.priceInputWidth()
 		j := 0
 		for i, g := range m.config.PassengerGroups {
 			m.inputs[j] = textinput.New()
 			m.inputs[j].Placeholder = fmt.Sprintf("Group %d board fee", i+1)
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.BoardFee))
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			j++
 			m.inputs[j] = textinput.New()
 			m.inputs[j].Placeholder = fmt.Sprintf("Group %d per km", i+1)
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerKm))
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			j++
 			m.inputs[j] = textinput.New()
 			m.inputs[j].Placeholder = fmt.Sprintf("Group %d per minute", i+1)
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerMinute))
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			j++
 			m.inputs[j] = textinput.New()
 			m.inputs[j].Placeholder = fmt.Sprintf("Group %d wait minute", i+1)
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			j++
 		}
 		m.focusIdx = 0
@@ -263,26 +308,27 @@ func (m Model) updateSetupLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.config.Language = m.lang
 		m.setupStep = 1
 		m.inputs = make([]textinput.Model, len(m.config.PassengerGroups)*4)
+		pw := m.priceInputWidth()
 		j := 0
 		for _, g := range m.config.PassengerGroups {
 			m.inputs[j] = textinput.New()
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.BoardFee))
 			j++
 			m.inputs[j] = textinput.New()
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerKm))
 			j++
 			m.inputs[j] = textinput.New()
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerMinute))
 			j++
 			m.inputs[j] = textinput.New()
 			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = 10
+			m.inputs[j].Width = pw
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
 			j++
 		}
@@ -474,10 +520,11 @@ func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.routeInfo = nil
 		m.calcInput = calc.FareInput{}
 		m.inputs = make([]textinput.Model, 3)
+		inputW := m.inputWidth()
 		for i := range m.inputs {
 			m.inputs[i] = textinput.New()
 			m.inputs[i].CharLimit = 80
-			m.inputs[i].Width = 40
+			m.inputs[i].Width = inputW
 		}
 		m.inputs[0].Placeholder = t(m.lang, "calc_placeholder_start")
 		m.inputs[0].Focus()
@@ -683,7 +730,14 @@ func (m Model) View() string {
 		b.WriteString(errorStyle.Render(t(m.lang, "err_error") + m.err))
 	}
 
-	return borderStyle.Render(b.String())
+	content := borderStyle.
+		Width(m.contentWidth()).
+		Render(b.String())
+
+	if m.height > 0 {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	}
+	return content
 }
 
 func (m Model) viewMain() string {
@@ -840,11 +894,15 @@ func (m Model) viewCalc() string {
 }
 
 func (m Model) renderSuggestions() string {
+	maxLen := m.contentWidth() - 8
+	if maxLen < 20 {
+		maxLen = 20
+	}
 	var b strings.Builder
 	for i, s := range m.suggestions {
 		display := s.Display
-		if len(display) > 60 {
-			display = display[:57] + "..."
+		if len(display) > maxLen {
+			display = display[:maxLen-3] + "..."
 		}
 		if i == m.suggestionIdx {
 			b.WriteString("  " + successStyle.Render("▸ "+display) + "\n")
