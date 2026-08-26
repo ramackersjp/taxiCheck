@@ -12,12 +12,12 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Settings screen to modify pricing without editing files
 - English and Dutch language support
 - Clean, professional taxi-inspired UI with yellow borders
-- ASCII taxi logo
+- Unicode block art taxi logo
 - Version display in main menu
 - Check for updates from GitHub
 - Pull updates directly from the TUI
 - Switch between dev and stable branches from the TUI
-- Uninstall from the main menu
+- Two-step uninstall confirmation for safety
 
 ## Installation
 
@@ -97,8 +97,11 @@ On first launch, the application will perform initial setup:
 ### Uninstalling
 
 1. Press **7** from the main menu
-2. Confirm with **y** to uninstall
-3. The app removes the binary and desktop entry
+2. First confirmation: "Are you sure?" - press **y** to continue
+3. Second confirmation: "Are you REALLY sure?" - press **y** to uninstall
+4. The app removes the binary and desktop entry
+
+> **Safety:** The two-step confirmation ensures you don't accidentally uninstall.
 
 ### Keyboard Controls
 
@@ -109,6 +112,7 @@ On first launch, the application will perform initial setup:
 | Shift+Tab | Previous input field |
 | Enter | Submit/Save |
 | Esc | Back/Cancel |
+| y/n | Yes/No for confirmations |
 | q | Quit |
 
 ## Branch Strategy
@@ -231,7 +235,7 @@ taxiprijs/
 │       ├── model.go             # Bubble Tea TUI
 │       ├── style.go             # Lip Gloss styling
 │       ├── lang.go              # EN/NL translations
-│       └── logo.go              # ASCII taxi logo
+│       └── logo.go              # Unicode block art taxi logo
 ├── .env.example                 # API configuration template
 ├── .env                         # API configuration (git-ignored)
 ├── go.mod
