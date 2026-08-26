@@ -22,12 +22,12 @@ type RouteResult struct {
 }
 
 var (
-	osrmURL      string
-	nominatimURL string
-	userAgent    string
-	httpClient   = &http.Client{Timeout: 15 * time.Second}
-	loaded       bool
-	nominatimMu  sync.Mutex
+	osrmURL       string
+	nominatimURL  string
+	userAgent     string
+	httpClient    = &http.Client{Timeout: 15 * time.Second}
+	loaded        bool
+	nominatimMu   sync.Mutex
 	lastNominatim time.Time
 )
 
