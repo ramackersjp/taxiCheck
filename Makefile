@@ -37,6 +37,10 @@ uninstall:
 	sudo rm -f /usr/share/applications/$(APP_NAME).desktop
 	sudo rm -f /usr/local/share/man/man1/$(APP_NAME).1
 	rm -rf $$HOME/.$(APP_NAME)
+	rm -rf $$HOME/.config/omarchy/plugins/jp.taxiprijs
+	@if [ -f "$$HOME/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \
+		jq '(.bar.layout.center // []) |= map(select(.id != "jp.taxiprijs")) | (.bar.layout.left // []) |= map(select(.id != "jp.taxiprijs")) | (.bar.layout.right // []) |= map(select(.id != "jp.taxiprijs"))' "$$HOME/.config/omarchy/shell.json" > "$$HOME/.config/omarchy/shell.json.tmp" && mv "$$HOME/.config/omarchy/shell.json.tmp" "$$HOME/.config/omarchy/shell.json"; \
+	fi
 	@echo "Uninstalled"
 
 clean:
