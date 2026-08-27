@@ -40,6 +40,22 @@ func SetVersion(v string) {
 	appVersion = v
 }
 
+func DetectVersion() {
+	dir := gitRepoDir()
+	args := []string{"symbolic-ref", "--short", "HEAD"}
+	if dir != "" {
+		args = append([]string{"-C", dir}, args...)
+	}
+	cmd := exec.Command("git", args...)
+	output, err := cmd.Output()
+	if err == nil {
+		branch := strings.TrimSpace(string(output))
+		if branch == "v1.0.0" || branch == "dev" {
+			appVersion = branch
+		}
+	}
+}
+
 type routeMsg struct {
 	result *calc.FareResult
 	route  *routing.RouteResult
@@ -281,6 +297,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err.Error()
 		} else {
 			m.currentBranch = msg.current
+			if msg.current == "v1.0.0" || msg.current == "dev" {
+				appVersion = msg.current
+			}
 			m.branchList = msg.branches
 			m.branchIdx = 0
 			for i, b := range msg.branches {
