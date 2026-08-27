@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +41,15 @@ func SetVersion(v string) {
 	appVersion = v
 }
 
+// stableBranchRe matches semantic-versioned stable release branches (e.g.
+// v1.0.0, v1.0.1). Keeping this generic means bumping the release requires no
+// code changes; only the version string in the build config.
+var stableBranchRe = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
+
+func stableBranch(branch string) bool {
+	return stableBranchRe.MatchString(branch)
+}
+
 func DetectVersion() {
 	dir := gitRepoDir()
 	args := []string{"symbolic-ref", "--short", "HEAD"}
@@ -50,7 +60,7 @@ func DetectVersion() {
 	output, err := cmd.Output()
 	if err == nil {
 		branch := strings.TrimSpace(string(output))
-		if branch == "v1.0.0" || branch == "dev" {
+		if stableBranch(branch) || branch == "dev" {
 			appVersion = branch
 		}
 	}
@@ -303,7 +313,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err.Error()
 		} else {
 			m.currentBranch = msg.current
-			if msg.current == "v1.0.0" || msg.current == "dev" {
+			if stableBranch(msg.current) || msg.current == "dev" {
 				appVersion = msg.current
 			}
 			m.branchList = msg.branches
@@ -860,9 +870,9 @@ func (m Model) checkUpdate() tea.Cmd {
 			}
 		}
 
-		// The stable branch tracks GitHub releases; dev (and any other branch)
-		// receives updates via the remote git branch.
-		if branch == "v1.0.0" {
+		// Stable release branches track GitHub releases; dev (and any other
+		// branch) receives updates via the remote git branch.
+		if stableBranch(branch) {
 			return releaseCheckUpdate(currentVer)
 		}
 		return gitCheckUpdate(dir, branch)
@@ -897,7 +907,7 @@ func gitCheckUpdate(dir, branch string) updateCheckMsg {
 }
 
 // releaseCheckUpdate compares the running version against the latest GitHub
-// release, used for the stable v1.0.0 branch.
+// release, used for stable release branches.
 func releaseCheckUpdate(currentVer string) updateCheckMsg {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get("https://api.github.com/repos/ramackersjp/taxiprijs/releases/latest")
@@ -953,7 +963,7 @@ func (m Model) fetchBranches() tea.Cmd {
 			current = strings.TrimSpace(string(output))
 		}
 
-		branches := []string{"dev", "v1.0.0"}
+		branches := []string{"dev", "v1.0.1"}
 
 		return branchResultMsg{
 			current:  current,
