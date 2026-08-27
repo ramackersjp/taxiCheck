@@ -86,6 +86,7 @@ taxiprijs/
 - Unicode block art taxi rendered centered above the content border
 - Yellow-themed, consistent with the app's visual style
 - Uses `GetLogoCentered(width)` for proper centering
+- Version detected from git branch at startup (dev or v1.0.0)
 
 ## Uninstall Safety
 - Step 1: "Are you sure you want to uninstall?" (y/n)
@@ -152,7 +153,8 @@ taxiprijs/
 - No telemetry or tracking
 - Configuration must be human-editable
 - Nominatim rate limit: max 1 request per second (enforced by rate limiter)
-- Rate limiter releases mutex before sleeping to prevent blocking suggestion requests
+- Rate limiter holds mutex during sleep to prevent concurrent requests
+- Address suggestions use retry logic (max 3 attempts) with 2s wait on 429
 
 ## Current Features
 - Real-time route calculation via OpenStreetMap
@@ -167,7 +169,7 @@ taxiprijs/
 - Keyboard-only navigation
 - English and Dutch language support
 - Fastest/shortest route mode toggle (press F2 on calc screen)
-- Address suggestions while typing (1 second debounce)
+- Address suggestions while typing (300ms debounce)
 - Version display in main menu
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI
