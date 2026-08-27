@@ -844,7 +844,7 @@ func (m Model) fetchBranches() tea.Cmd {
 	return func() tea.Msg {
 		allowed := map[string]bool{"dev": true, "v1.0.0": true}
 
-		cmd := exec.Command("git", "branch", "--format=%(refname:short)")
+		cmd := exec.Command("git", "branch")
 		output, err := cmd.Output()
 		if err != nil {
 			return branchResultMsg{err: err}
@@ -854,6 +854,7 @@ func (m Model) fetchBranches() tea.Cmd {
 		var branches []string
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
+			line = strings.TrimLeft(line, "* ")
 			if line != "" && allowed[line] {
 				branches = append(branches, line)
 			}
