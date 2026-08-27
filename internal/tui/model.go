@@ -1383,7 +1383,8 @@ func (m Model) viewResult() string {
 		b.WriteString(t(m.lang, "result_board") + fmt.Sprintf("€%.2f", m.result.BaseFee) + "\n")
 		b.WriteString(t(m.lang, "result_km") + fmt.Sprintf("€%.2f", m.result.KmFee) + "\n")
 		b.WriteString(t(m.lang, "result_time") + fmt.Sprintf("€%.2f", m.result.TimeFee) + "\n")
-		b.WriteString("───────────────────\n")
+		sep := strings.Repeat("─", m.contentWidth()-4)
+		b.WriteString(sep + "\n")
 		b.WriteString(t(m.lang, "result_total") + successStyle.Render("€"+fmt.Sprintf("%.2f", m.result.Total)) + "\n")
 	}
 	b.WriteString("\n")
