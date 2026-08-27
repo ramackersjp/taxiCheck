@@ -79,14 +79,14 @@ taxiprijs/
 5. Initial Setup - First-run: language selection + pricing configuration
 6. Result - Shows route info (distance, duration) and calculated fare
 7. Check for Updates - Fetch latest version from GitHub, pull updates
-8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.0)
+8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.1)
 9. Uninstall - Two-step confirmation, then removes the application
 
 ## Logo
 - Unicode block art taxi rendered centered above the content border
 - Yellow-themed, consistent with the app's visual style
 - Uses `GetLogoCentered(width)` for proper centering
-- Version detected from git branch at startup (dev or v1.0.0)
+- Version detected from git branch at startup (dev or any stable vX.Y.Z branch)
 
 ## Uninstall Safety
 - Step 1: "Are you sure you want to uninstall?" (y/n)
@@ -122,7 +122,7 @@ taxiprijs/
 ### Branch Strategy
 - `dev` - Development branch. **Chaotic, unstable, may break at any time.** All new features are developed here first. This is the default development branch.
 - `main` - Stable releases only. Never commit directly to `main`.
-- `v1.0.0` - Stable release branch. This is the current stable version. Bug fixes only.
+- `v1.0.1` - Stable release branch. This is the current stable version. Bug fixes only.
 - Feature branches - Created from `dev` for each new feature (e.g. `feature/logo-and-uninstall-safety`).
 
 ### Rules
@@ -133,7 +133,7 @@ taxiprijs/
 5. Never commit `.env` (contains API config)
 6. For new features, always branch from `dev`, not from stable releases
 7. The `dev` branch may be chaotic and unstable
-8. The stable release branch (currently `v1.0.0`) is for production use
+8. The stable release branch (currently `v1.0.1`) is for production use
 
 ## Dependencies
 - github.com/charmbracelet/bubbletea

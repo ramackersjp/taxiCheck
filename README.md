@@ -90,7 +90,7 @@ On first launch, the application will perform initial setup:
 1. Press **6** from the main menu
 2. Use ↑/↓ to select a branch
 3. Press **Space** to switch to the selected branch
-4. Available branches: `dev` and stable release branches (e.g. `v1.0.0`)
+4. Available branches: `dev` and stable release branches (e.g. `v1.0.1`)
 
 > **Note:** The `dev` branch may be chaotic and unstable. Use the stable release branch for production use.
 
@@ -120,7 +120,7 @@ On first launch, the application will perform initial setup:
 | Branch | Purpose | Stability |
 |--------|---------|-----------|
 | `dev` | Development | Chaotic, unstable, may break at any time |
-| `v1.0.0` | Stable release | Current stable version |
+| `v1.0.1` | Stable release | Current stable version |
 | `main` | Production | Only merged from stable releases |
 
 > **Important:** For new features, always create a branch from `dev`, not from stable releases.
