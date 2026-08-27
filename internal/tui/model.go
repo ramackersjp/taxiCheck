@@ -1023,9 +1023,17 @@ func (m Model) saveSetup() (tea.Model, tea.Cmd) {
 			m.err = t(m.lang, "err_invalid_board") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
+		if boardFee < 0 {
+			m.err = t(m.lang, "err_negative_board") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
 		perKm, err := strconv.ParseFloat(m.inputs[i*4+1].Value(), 64)
 		if err != nil {
 			m.err = t(m.lang, "err_invalid_per_km") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
+		if perKm < 0 {
+			m.err = t(m.lang, "err_negative_per_km") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
 		perMinute, err := strconv.ParseFloat(m.inputs[i*4+2].Value(), 64)
@@ -1033,9 +1041,17 @@ func (m Model) saveSetup() (tea.Model, tea.Cmd) {
 			m.err = t(m.lang, "err_invalid_per_min") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
+		if perMinute < 0 {
+			m.err = t(m.lang, "err_negative_per_min") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
 		waitMinute, err := strconv.ParseFloat(m.inputs[i*4+3].Value(), 64)
 		if err != nil {
 			m.err = t(m.lang, "err_invalid_wait_min") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
+		if waitMinute < 0 {
+			m.err = t(m.lang, "err_negative_wait") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
 
@@ -1068,9 +1084,17 @@ func (m Model) saveSettings() (tea.Model, tea.Cmd) {
 			m.err = t(m.lang, "err_invalid_board") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
+		if boardFee < 0 {
+			m.err = t(m.lang, "err_negative_board") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
 		perKm, err := strconv.ParseFloat(m.inputs[i*4+1].Value(), 64)
 		if err != nil {
 			m.err = t(m.lang, "err_invalid_per_km") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
+		if perKm < 0 {
+			m.err = t(m.lang, "err_negative_per_km") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
 		perMinute, err := strconv.ParseFloat(m.inputs[i*4+2].Value(), 64)
@@ -1078,9 +1102,17 @@ func (m Model) saveSettings() (tea.Model, tea.Cmd) {
 			m.err = t(m.lang, "err_invalid_per_min") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
+		if perMinute < 0 {
+			m.err = t(m.lang, "err_negative_per_min") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
 		waitMinute, err := strconv.ParseFloat(m.inputs[i*4+3].Value(), 64)
 		if err != nil {
 			m.err = t(m.lang, "err_invalid_wait_min") + fmt.Sprintf("%d", i+1)
+			return m, nil
+		}
+		if waitMinute < 0 {
+			m.err = t(m.lang, "err_negative_wait") + fmt.Sprintf("%d", i+1)
 			return m, nil
 		}
 
