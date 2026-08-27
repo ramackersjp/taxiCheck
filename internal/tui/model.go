@@ -77,6 +77,7 @@ type branchResultMsg struct {
 type branchSwitchMsg struct {
 	success bool
 	err     error
+	newTag  string
 }
 
 type uninstallResultMsg struct {
@@ -274,6 +275,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err.Error()
 		} else {
+			appVersion = msg.newTag
 			m.branchStatus = t(m.lang, "branch_switch_success")
 			m.screen = screenMain
 		}
@@ -840,7 +842,9 @@ func (m Model) pullUpdate() tea.Cmd {
 
 func (m Model) fetchBranches() tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("git", "branch", "-a", "--format=%(refname:short)")
+		allowed := map[string]bool{"dev": true, "v1.0.0": true}
+
+		cmd := exec.Command("git", "branch", "--format=%(refname:short)")
 		output, err := cmd.Output()
 		if err != nil {
 			return branchResultMsg{err: err}
@@ -850,10 +854,7 @@ func (m Model) fetchBranches() tea.Cmd {
 		var branches []string
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "origin/") {
-				continue
-			}
-			if line != "" {
+			if line != "" && allowed[line] {
 				branches = append(branches, line)
 			}
 		}
@@ -878,7 +879,14 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 		if err != nil {
 			return branchSwitchMsg{err: fmt.Errorf("%s: %s", err, string(output))}
 		}
-		return branchSwitchMsg{success: true}
+		// Get the current tag or branch name
+		tagCmd := exec.Command("git", "describe", "--tags", "--exact-match")
+		tagOutput, tagErr := tagCmd.CombinedOutput()
+		newTag := branch
+		if tagErr == nil {
+			newTag = strings.TrimSpace(string(tagOutput))
+		}
+		return branchSwitchMsg{success: true, newTag: newTag}
 	}
 }
 
