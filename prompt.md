@@ -120,8 +120,8 @@ taxiprijs/
 
 ## Git Workflow
 ### Branch Strategy
-- `v1.0.1` - Stable release branch. This is the current stable version. **Default branch on GitHub**, so fresh `git clone` + build gives the latest stable. Bug fixes only.
-- `dev` - Development branch. **Chaotic, unstable, may break at any time.** All new features are developed here first. This is the default development / PR target branch. Switch to it if you want in-development features.
+- `dev` - Development branch. **Chaotic, unstable, may break at any time.** All new features are developed here first. This is the **GitHub default branch** and the PR target. Not what you want for a production install.
+- `v1.0.1` - Stable release branch. This is the current stable version. Recommended for installs (documented `git checkout v1.0.1` in the README). Bug fixes only.
 - `main` - Stable releases only. Never commit directly to `main`.
 - Feature branches - Created from `dev` for each new feature (e.g. `feature/logo-and-uninstall-safety`).
 
