@@ -23,12 +23,23 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 
 ### From Source
 
+The repository's default branch is the **latest stable release**, so a plain `git clone` gives you the stable version automatically.
+
 ```bash
 git clone https://github.com/jp/taxiprijs.git
 cd taxiprijs
 cp .env.example .env
 go build -o taxiprijs ./cmd/taxiprijs
 ```
+
+You can verify which branch you are on with `git branch --show-current`. By default this is the latest stable branch (e.g. `v1.0.1`).
+
+> **Tip:** Want the latest in-development features instead? Switch to the `dev` branch:
+> ```bash
+> git checkout dev
+> go build -o taxiprijs ./cmd/taxiprijs
+> ```
+> The `dev` branch is chaotic and may break at any time. You can also switch branches from within the app (menu option **6**).
 
 ### Prerequisites
 
@@ -99,7 +110,7 @@ On first launch, the application will perform initial setup:
 1. Press **7** from the main menu
 2. First confirmation: "Are you sure?" - press **y** to continue
 3. Second confirmation: "Are you REALLY sure?" - press **y** to uninstall
-4. The app removes the binary and desktop entry
+4. The app removes the binary, desktop entry, man page, and configuration
 
 > **Safety:** The two-step confirmation ensures you don't accidentally uninstall.
 
@@ -119,10 +130,12 @@ On first launch, the application will perform initial setup:
 
 | Branch | Purpose | Stability |
 |--------|---------|-----------|
+| `v1.0.1` | Stable release (**default**) | Current stable version, what you get on install |
 | `dev` | Development | Chaotic, unstable, may break at any time |
-| `v1.0.1` | Stable release | Current stable version |
 | `main` | Production | Only merged from stable releases |
 
+> **Note:** The default branch is the latest stable release, so fresh installs run the stable version. Use `dev` only if you want the latest in-development features.
+>
 > **Important:** For new features, always create a branch from `dev`, not from stable releases.
 
 ## Configuration
@@ -284,13 +297,31 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## Uninstall
 
-```bash
-# Remove binary
-rm ./taxiprijs
+The easiest way is from within the running app (menu option **7**) or via `make uninstall` from the source directory:
 
-# Remove configuration (optional)
-rm -rf ~/.taxiprijs
+```bash
+# From the source directory (recommended)
+make uninstall
+```
+
+This removes the binary, desktop entry, man page, and configuration for you.
+
+### Manual Uninstall
+
+If you installed manually (not via `make install`), remove the files yourself:
+
+```bash
+# Remove binary (if installed by 'make install')
+sudo rm -f /usr/local/bin/taxiprijs
+
+# Remove desktop entry (if installed by 'make install')
+sudo rm -f /usr/share/applications/taxiprijs.desktop
 
 # Remove man page (if installed)
-sudo rm /usr/local/share/man/man1/taxiprijs.1
+sudo rm -f /usr/local/share/man/man1/taxiprijs.1
+
+# Remove configuration
+rm -rf ~/.taxiprijs
 ```
+
+The `-f` flag prevents errors if a file does not exist. Use absolute paths so the commands work from any directory.
