@@ -21,7 +21,11 @@ func GetLogo() string {
 	b.WriteString(taxiArt)
 	b.WriteString("\n")
 	b.WriteString(titleStyle.Render("TaxiCheck"))
-	b.WriteString(" " + helpStyle.Render("v"+appVersion))
+	ver := appVersion
+	if !strings.HasPrefix(ver, "v") {
+		ver = "v" + ver
+	}
+	b.WriteString(" " + helpStyle.Render(ver))
 	return logoBorderStyle.Render(b.String())
 }
 

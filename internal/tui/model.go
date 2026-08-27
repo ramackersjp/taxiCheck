@@ -879,14 +879,7 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 		if err != nil {
 			return branchSwitchMsg{err: fmt.Errorf("%s: %s", err, string(output))}
 		}
-		// Get the current tag or branch name
-		tagCmd := exec.Command("git", "describe", "--tags", "--exact-match")
-		tagOutput, tagErr := tagCmd.CombinedOutput()
-		newTag := branch
-		if tagErr == nil {
-			newTag = strings.TrimSpace(string(tagOutput))
-		}
-		return branchSwitchMsg{success: true, newTag: newTag}
+		return branchSwitchMsg{success: true, newTag: branch}
 	}
 }
 
@@ -1356,7 +1349,11 @@ func (m Model) viewUpdate() string {
 	b.WriteString(subtitleStyle.Render(t(m.lang, "update_title")))
 	b.WriteString("\n\n")
 
-	b.WriteString(t(m.lang, "update_current") + successStyle.Render("v"+appVersion) + "\n")
+	ver := appVersion
+	if !strings.HasPrefix(ver, "v") {
+		ver = "v" + ver
+	}
+	b.WriteString(t(m.lang, "update_current") + successStyle.Render(ver) + "\n")
 	b.WriteString("\n")
 
 	if m.updateStatus != "" {
