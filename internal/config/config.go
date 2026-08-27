@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -150,14 +149,3 @@ func Exists() bool {
 	_, err = os.Stat(path)
 	return err == nil
 }
-
-var (
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("226")).
-			MarginBottom(1)
-
-	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")).
-			Bold(true)
-)
