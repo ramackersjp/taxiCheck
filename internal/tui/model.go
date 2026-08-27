@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -184,6 +186,25 @@ func (m Model) priceInputWidth() int {
 		w = 15
 	}
 	return w
+}
+
+func gitRepoDir() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	dir := filepath.Dir(exe)
+	for {
+		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
 }
 
 func (m Model) contentWidth() int {
@@ -831,7 +852,12 @@ func (m Model) checkUpdate() tea.Cmd {
 
 func (m Model) pullUpdate() tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("git", "pull")
+		dir := gitRepoDir()
+		args := []string{"pull"}
+		if dir != "" {
+			args = append([]string{"-C", dir}, args...)
+		}
+		cmd := exec.Command("git", args...)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return updateResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
@@ -842,7 +868,12 @@ func (m Model) pullUpdate() tea.Cmd {
 
 func (m Model) fetchBranches() tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("git", "symbolic-ref", "--short", "HEAD")
+		dir := gitRepoDir()
+		args := []string{"symbolic-ref", "--short", "HEAD"}
+		if dir != "" {
+			args = append([]string{"-C", dir}, args...)
+		}
+		cmd := exec.Command("git", args...)
 		output, err := cmd.Output()
 		current := "HEAD"
 		if err == nil {
@@ -860,7 +891,12 @@ func (m Model) fetchBranches() tea.Cmd {
 
 func (m Model) switchBranch(branch string) tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("git", "checkout", "-B", branch, "origin/"+branch)
+		dir := gitRepoDir()
+		args := []string{"checkout", branch}
+		if dir != "" {
+			args = append([]string{"-C", dir}, args...)
+		}
+		cmd := exec.Command("git", args...)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return branchSwitchMsg{err: fmt.Errorf("%s: %s", err, string(output))}
