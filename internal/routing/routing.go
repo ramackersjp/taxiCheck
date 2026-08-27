@@ -98,7 +98,6 @@ type osrmResponse struct {
 
 func Geocode(address string) (float64, float64, error) {
 	LoadEnv()
-	waitForNominatim()
 
 	query := address + ", Netherlands"
 	params := url.Values{
@@ -108,48 +107,65 @@ func Geocode(address string) (float64, float64, error) {
 		"countrycodes": {"nl"},
 	}
 
-	reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
-	req, err := http.NewRequest("GET", reqURL, nil)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("User-Agent", userAgent)
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		waitForNominatim()
 
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return 0, 0, fmt.Errorf("geocoding request failed: %w", err)
-	}
-	defer resp.Body.Close()
+		reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
+		req, err := http.NewRequest("GET", reqURL, nil)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("User-Agent", userAgent)
 
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return 0, 0, fmt.Errorf("geocoding returned status %d: %s", resp.StatusCode, string(body))
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("geocoding request failed: %w", err)
+			continue
+		}
+
+		if resp.StatusCode == 429 {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("Te veel verzoeken naar Nominatim, probeer opnieuw")
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		resp.Body.Close()
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response: %w", err)
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			lastErr = fmt.Errorf("geocoding returned status %d", resp.StatusCode)
+			continue
+		}
+
+		var results []nominatimResult
+		if err := json.Unmarshal(body, &results); err != nil {
+			lastErr = fmt.Errorf("failed to parse geocoding response: %w", err)
+			continue
+		}
+
+		if len(results) == 0 {
+			return 0, 0, fmt.Errorf("address not found: %s", address)
+		}
+
+		lat, err := strconv.ParseFloat(results[0].Lat, 64)
+		if err != nil {
+			return 0, 0, fmt.Errorf("invalid latitude: %w", err)
+		}
+		lon, err := strconv.ParseFloat(results[0].Lon, 64)
+		if err != nil {
+			return 0, 0, fmt.Errorf("invalid longitude: %w", err)
+		}
+
+		return lat, lon, nil
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	var results []nominatimResult
-	if err := json.Unmarshal(body, &results); err != nil {
-		return 0, 0, fmt.Errorf("failed to parse geocoding response: %w", err)
-	}
-
-	if len(results) == 0 {
-		return 0, 0, fmt.Errorf("address not found: %s", address)
-	}
-
-	lat, err := strconv.ParseFloat(results[0].Lat, 64)
-	if err != nil {
-		return 0, 0, fmt.Errorf("invalid latitude: %w", err)
-	}
-	lon, err := strconv.ParseFloat(results[0].Lon, 64)
-	if err != nil {
-		return 0, 0, fmt.Errorf("invalid longitude: %w", err)
-	}
-
-	return lat, lon, nil
+	return 0, 0, lastErr
 }
 
 func GetRoute(lat1, lon1, lat2, lon2 float64, mode string) (*RouteResult, error) {
