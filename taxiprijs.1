@@ -1,4 +1,4 @@
-.TH TAXIPRIJS 1 "2024" "taxiprijs 1.0" "User Commands"
+.TH TAXIPRIJS 1 "2026" "taxiprijs 1.0" "User Commands"
 .SH NAME
 taxiprijs \- Dutch taxi fare calculator TUI
 .SH SYNOPSIS
@@ -103,11 +103,11 @@ Start the application
 .IP 2. 3
 Select option 1 (Calculate Fare)
 .IP 3. 3
-Enter trip duration in minutes
+Enter start address (e.g. "Dam Square, Amsterdam")
 .IP 4. 3
-Enter waiting time in minutes
+Enter destination (e.g. "Central Station, Rotterdam")
 .IP 5. 3
-Enter number of passengers (1-5)
+Enter number of passengers (1-8)
 .IP 6. 3
 Press Enter to calculate
 .SH EXIT STATUS
@@ -118,7 +118,7 @@ Normal exit
 .B 1
 Error occurred
 .SH SEE ALSO
-.BRtoml(5)
+.BR toml (5)
 .SH BUGS
 Report bugs at https://github.com/jp/taxiprijs/issues
 .SH AUTHOR
