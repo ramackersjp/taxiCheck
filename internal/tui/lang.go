@@ -135,6 +135,10 @@ var translations = map[string]map[string]string{
 		"err_invalid_per_km":   "Invalid per km rate for group ",
 		"err_invalid_per_min":  "Invalid per minute rate for group ",
 		"err_invalid_wait_min": "Invalid wait minute rate for group ",
+		"err_negative_board":   "Board fee cannot be negative for group ",
+		"err_negative_per_km":  "Per km rate cannot be negative for group ",
+		"err_negative_per_min": "Per minute rate cannot be negative for group ",
+		"err_negative_wait":    "Wait minute rate cannot be negative for group ",
 		"err_error":            "Error: ",
 	},
 	"nl": {
@@ -271,6 +275,10 @@ var translations = map[string]map[string]string{
 		"err_invalid_per_km":   "Ongeldig per km tarief voor groep ",
 		"err_invalid_per_min":  "Ongeldig per minuut tarief voor groep ",
 		"err_invalid_wait_min": "Ongeldig wachtminuut tarief voor groep ",
+		"err_negative_board":   "Instaptarief kan niet negatief zijn voor groep ",
+		"err_negative_per_km":  "Per km tarief kan niet negatief zijn voor groep ",
+		"err_negative_per_min": "Per minuut tarief kan niet negatief zijn voor groep ",
+		"err_negative_wait":    "Wachtminuut tarief kan niet negatief zijn voor groep ",
 		"err_error":            "Fout: ",
 	},
 }
