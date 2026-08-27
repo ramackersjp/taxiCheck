@@ -12,6 +12,9 @@ BarWidget {
 
   property bool menuOpen: false
 
+  readonly property color foreground: bar ? bar.foreground : Color.foreground
+  readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
+
   BarIconButton {
     id: button
     anchors.fill: parent
@@ -61,18 +64,23 @@ BarWidget {
         ]
 
         Item {
+          required property var modelData
+          required property int index
+
+          readonly property bool isSeparator: modelData.isSeparator === true
+
           width: menuColumn.width
-          implicitHeight: modelData.isSeparator ? Style.space(9) : Style.space(28)
+          implicitHeight: isSeparator ? Style.space(9) : Style.space(28)
 
           Rectangle {
-            visible: !modelData.isSeparator
+            visible: !isSeparator
             anchors.fill: parent
             radius: Math.max(2, Style.cornerRadius)
             color: rowMouse.containsMouse ? Style.hoverFillFor(root.foreground, root.foreground) : "transparent"
           }
 
           Rectangle {
-            visible: modelData.isSeparator
+            visible: isSeparator
             anchors.left: parent.left
             anchors.leftMargin: Style.space(8)
             anchors.right: parent.right
@@ -84,19 +92,19 @@ BarWidget {
           }
 
           Text {
-            visible: !modelData.isSeparator
+            visible: !isSeparator
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
             anchors.leftMargin: Style.space(8)
-            text: modelData.label
+            text: modelData.label || ""
             color: root.foreground
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.family: root.fontFamily
             font.pixelSize: Style.font.body
           }
 
           MouseArea {
             id: rowMouse
-            visible: !modelData.isSeparator
+            visible: !isSeparator
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
