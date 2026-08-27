@@ -55,20 +55,36 @@ BarWidget {
         model: [
           { label: "Open TaxiCheck", cmd: "alacritty --class TaxiCheck -o 'window.dimensions.columns=80' -o 'window.dimensions.lines=25' -e /home/jp/Code/taxiprijs/taxiprijs" },
           { label: "Handleiding", cmd: "alacritty -e man taxiprijs" },
-          { label: "Config map", cmd: "xdg-open ~/.taxiprijs" }
+          { label: "Config map", cmd: "xdg-open ~/.taxiprijs" },
+          { isSeparator: true },
+          { label: "Quit", cmd: "pkill -f /home/jp/Code/taxiprijs/taxiprijs" }
         ]
 
         Item {
           width: menuColumn.width
-          implicitHeight: Style.space(28)
+          implicitHeight: modelData.isSeparator ? Style.space(9) : Style.space(28)
 
           Rectangle {
+            visible: !modelData.isSeparator
             anchors.fill: parent
             radius: Math.max(2, Style.cornerRadius)
             color: rowMouse.containsMouse ? Style.hoverFillFor(root.foreground, root.foreground) : "transparent"
           }
 
+          Rectangle {
+            visible: modelData.isSeparator
+            anchors.left: parent.left
+            anchors.leftMargin: Style.space(8)
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(8)
+            anchors.verticalCenter: parent.verticalCenter
+            height: 1
+            color: Color.popups.border
+            opacity: 0.5
+          }
+
           Text {
+            visible: !modelData.isSeparator
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
             anchors.leftMargin: Style.space(8)
@@ -80,6 +96,7 @@ BarWidget {
 
           MouseArea {
             id: rowMouse
+            visible: !modelData.isSeparator
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
