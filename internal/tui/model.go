@@ -842,32 +842,17 @@ func (m Model) pullUpdate() tea.Cmd {
 
 func (m Model) fetchBranches() tea.Cmd {
 	return func() tea.Msg {
-		allowed := map[string]bool{"dev": true, "v1.0.0": true}
-
-		cmd := exec.Command("git", "branch")
+		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 		output, err := cmd.Output()
 		if err != nil {
 			return branchResultMsg{err: err}
 		}
+		current := strings.TrimSpace(string(output))
 
-		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-		var branches []string
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			line = strings.TrimLeft(line, "* ")
-			if line != "" && allowed[line] {
-				branches = append(branches, line)
-			}
-		}
-
-		cmd = exec.Command("git", "branch", "--show-current")
-		current, err := cmd.Output()
-		if err != nil {
-			return branchResultMsg{err: err}
-		}
+		branches := []string{"dev", "v1.0.0"}
 
 		return branchResultMsg{
-			current:  strings.TrimSpace(string(current)),
+			current:  current,
 			branches: branches,
 		}
 	}
