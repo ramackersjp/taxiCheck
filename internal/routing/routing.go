@@ -70,12 +70,14 @@ type nominatimResult struct {
 
 func waitForNominatim() {
 	nominatimMu.Lock()
-	defer nominatimMu.Unlock()
 	elapsed := time.Since(lastNominatim)
 	if elapsed < time.Second {
+		nominatimMu.Unlock()
 		time.Sleep(time.Second - elapsed)
+		nominatimMu.Lock()
 	}
 	lastNominatim = time.Now()
+	nominatimMu.Unlock()
 }
 
 type AddressSuggestion struct {
