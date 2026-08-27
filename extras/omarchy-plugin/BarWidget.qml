@@ -57,7 +57,7 @@ BarWidget {
           { label: "Handleiding", cmd: "alacritty -e man taxiprijs" },
           { label: "Config map", cmd: "xdg-open ~/.taxiprijs" },
           { isSeparator: true },
-          { label: "Quit", cmd: "pkill -f /home/jp/Code/taxiprijs/taxiprijs" }
+          { label: "Quit", cmd: "killall -q taxiprijs" }
         ]
 
         Item {
