@@ -848,6 +848,7 @@ func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) checkUpdate() tea.Cmd {
+	currentVer := appVersion
 	return func() tea.Msg {
 		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Get("https://api.github.com/repos/jp/taxiprijs/releases/latest")
@@ -867,7 +868,7 @@ func (m Model) checkUpdate() tea.Cmd {
 			return updateCheckMsg{err: err}
 		}
 
-		hasUpdate := release.TagName != appVersion
+		hasUpdate := release.TagName != currentVer
 		return updateCheckMsg{
 			latestTag: release.TagName,
 			hasUpdate: hasUpdate,
