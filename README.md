@@ -42,6 +42,22 @@ Use `git branch --show-current` to confirm you are on the stable branch.
 > ```
 > The `dev` branch is chaotic and may break at any time. You can also switch branches from within the app (menu option **6**).
 
+### Install to System
+
+To install the binary, a desktop entry, and the app icon system-wide (so TaxiCheck appears in your app launcher with its icon), use `make install`:
+
+```bash
+make install
+```
+
+This installs:
+
+- `/usr/local/bin/taxiprijs`
+- `/usr/share/applications/taxiprijs.desktop` (launcher entry with `Icon=taxiprijs`)
+- `/usr/share/icons/hicolor/scalable/apps/taxiprijs.svg` (the app icon)
+
+It also refreshes the icon and desktop databases so the entry shows up with its icon immediately.
+
 ### Prerequisites
 
 - Go 1.21 or later
@@ -305,7 +321,7 @@ The easiest way is from within the running app (menu option **7**) or via `make 
 make uninstall
 ```
 
-This removes the binary, desktop entry, man page, configuration, and the Omarchy (QML/bar widget) plugin for you.
+This removes the binary, desktop entry, icon, man page, configuration, and the Omarchy (QML/bar widget) plugin for you.
 
 ### Manual Uninstall
 
@@ -317,6 +333,9 @@ sudo rm -f /usr/local/bin/taxiprijs
 
 # Remove desktop entry (if installed by 'make install')
 sudo rm -f /usr/share/applications/taxiprijs.desktop
+
+# Remove app icon (if installed by 'make install')
+sudo rm -f /usr/share/icons/hicolor/scalable/apps/taxiprijs.svg
 
 # Remove man page (if installed)
 sudo rm -f /usr/local/share/man/man1/taxiprijs.1

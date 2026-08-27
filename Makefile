@@ -4,6 +4,9 @@ GOFLAGS  := -trimpath
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
 # Cross-compile targets
+INSTALL_DIR      := /usr/share/applications
+ICON_DIR         := /usr/share/icons/hicolor/scalable/apps
+
 .PHONY: build build-linux build-macos build-windows install uninstall clean
 
 build:
@@ -28,19 +31,26 @@ build-all: build-linux build-macos build-windows
 
 install: build
 	sudo install -Dm755 $(APP_NAME) /usr/local/bin/$(APP_NAME)
-	sudo install -Dm644 extras/$(APP_NAME).desktop /usr/share/applications/$(APP_NAME).desktop
+	sudo install -Dm644 extras/$(APP_NAME).desktop $(INSTALL_DIR)/$(APP_NAME).desktop
+	sudo install -Dm644 extras/$(APP_NAME).svg $(ICON_DIR)/$(APP_NAME).svg
+	@command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f /usr/share/icons/hicolor || true
+	@command -v update-desktop-database >/dev/null 2>&1 && sudo update-desktop-database $(INSTALL_DIR) || true
 	@echo "Installed: /usr/local/bin/$(APP_NAME)"
-	@echo "Desktop entry: /usr/share/applications/$(APP_NAME).desktop"
+	@echo "Desktop entry: $(INSTALL_DIR)/$(APP_NAME).desktop"
+	@echo "Icon: $(ICON_DIR)/$(APP_NAME).svg"
 
 uninstall:
 	sudo rm -f /usr/local/bin/$(APP_NAME)
-	sudo rm -f /usr/share/applications/$(APP_NAME).desktop
+	sudo rm -f $(INSTALL_DIR)/$(APP_NAME).desktop
+	sudo rm -f $(ICON_DIR)/$(APP_NAME).svg
 	sudo rm -f /usr/local/share/man/man1/$(APP_NAME).1
 	rm -rf $$HOME/.$(APP_NAME)
 	rm -rf $$HOME/.config/omarchy/plugins/jp.taxiprijs
 	@if [ -f "$$HOME/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \
 		jq '(.bar.layout.center // []) |= map(select(.id != "jp.taxiprijs")) | (.bar.layout.left // []) |= map(select(.id != "jp.taxiprijs")) | (.bar.layout.right // []) |= map(select(.id != "jp.taxiprijs"))' "$$HOME/.config/omarchy/shell.json" > "$$HOME/.config/omarchy/shell.json.tmp" && mv "$$HOME/.config/omarchy/shell.json.tmp" "$$HOME/.config/omarchy/shell.json"; \
 	fi
+	@command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f /usr/share/icons/hicolor || true
+	@command -v update-desktop-database >/dev/null 2>&1 && sudo update-desktop-database $(INSTALL_DIR) || true
 	@echo "Uninstalled"
 
 clean:
