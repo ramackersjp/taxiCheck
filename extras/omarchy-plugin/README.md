@@ -23,6 +23,22 @@ Then add to your bar layout in `~/.config/omarchy/shell.json`:
 { "id": "jp.taxiprijs" }
 ```
 
+## Development
+
+Iterating on the widget? `reload-plugin.sh` copies your local changes to the
+live plugin dir and restarts the shell:
+
+```sh
+./extras/omarchy-plugin/reload-plugin.sh        # copy + restart shell
+./extras/omarchy-plugin/reload-plugin.sh install # copy only
+./extras/omarchy-plugin/reload-plugin.sh restart # restart shell only
+```
+
+> **Note:** Layout/registration changes (`shell.json`) hot-reload, but QML
+> *content* changes require a shell restart on this system, because the Arch
+> `quickshell` package does not expose `Qt.clearComponentCache`. See
+> https://github.com/basecamp/omarchy/issues/8555.
+
 ## Remove
 
 ```sh
