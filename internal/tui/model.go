@@ -73,6 +73,7 @@ type suggestMsg struct {
 	inputIdx int
 	query    string
 	suggests []routing.AddressSuggestion
+	err      error
 }
 
 type updateCheckMsg struct {
@@ -262,9 +263,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.fetchSuggestions()
 	case suggestMsg:
 		if msg.inputIdx == m.suggestInput && m.lastInputVal == msg.query {
-			m.suggestions = msg.suggests
-			m.suggestionIdx = 0
-			m.showSuggest = len(msg.suggests) > 0
+			if msg.err != nil {
+				m.err = msg.err.Error()
+			} else {
+				m.err = ""
+				m.suggestions = msg.suggests
+				m.suggestionIdx = 0
+				m.showSuggest = len(msg.suggests) > 0
+			}
 		}
 		return m, nil
 	case updateCheckMsg:
@@ -721,8 +727,8 @@ func (m Model) fetchSuggestions() (tea.Model, tea.Cmd) {
 	q := query
 
 	return m, func() tea.Msg {
-		suggests, _ := routing.SuggestAddresses(q)
-		return suggestMsg{inputIdx: inputIdx, query: q, suggests: suggests}
+		suggests, err := routing.SuggestAddresses(q)
+		return suggestMsg{inputIdx: inputIdx, query: q, suggests: suggests, err: err}
 	}
 }
 
@@ -800,7 +806,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if i < 2 && newVal != oldVal && len(newVal) >= 2 {
 				m.suggestInput = i
 				m.lastInputVal = newVal
-				return m, tea.Tick(1*time.Second, func(t time.Time) tea.Msg {
+				return m, tea.Tick(1500*time.Millisecond, func(t time.Time) tea.Msg {
 					return tickMsg(t)
 				})
 			}

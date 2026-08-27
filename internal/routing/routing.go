@@ -58,7 +58,7 @@ func LoadEnv() {
 
 	userAgent = os.Getenv("USER_AGENT")
 	if userAgent == "" {
-		userAgent = "TaxiCheck/1.0"
+		userAgent = "TaxiCheck/1.0 (https://github.com/ramackersjp/taxiprijs)"
 	}
 }
 
@@ -72,9 +72,7 @@ func waitForNominatim() {
 	nominatimMu.Lock()
 	elapsed := time.Since(lastNominatim)
 	if elapsed < time.Second {
-		nominatimMu.Unlock()
 		time.Sleep(time.Second - elapsed)
-		nominatimMu.Lock()
 	}
 	lastNominatim = time.Now()
 	nominatimMu.Unlock()
@@ -238,7 +236,6 @@ func CalculateRoute(startAddress, endAddress string, mode string) (*RouteResult,
 
 func SuggestAddresses(query string) ([]AddressSuggestion, error) {
 	LoadEnv()
-	waitForNominatim()
 
 	if len(strings.TrimSpace(query)) < 2 {
 		return nil, nil
@@ -251,49 +248,67 @@ func SuggestAddresses(query string) ([]AddressSuggestion, error) {
 		"countrycodes": {"nl"},
 	}
 
-	reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
-	req, err := http.NewRequest("GET", reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", userAgent)
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		waitForNominatim()
 
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []nominatimResult
-	if err := json.Unmarshal(body, &results); err != nil {
-		return nil, err
-	}
-
-	var suggestions []AddressSuggestion
-	for _, r := range results {
-		lat, err := strconv.ParseFloat(r.Lat, 64)
+		reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
+		req, err := http.NewRequest("GET", reqURL, nil)
 		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("User-Agent", userAgent)
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			lastErr = err
 			continue
 		}
-		lon, err := strconv.ParseFloat(r.Lon, 64)
-		if err != nil {
+
+		if resp.StatusCode == 429 {
+			resp.Body.Close()
+			lastErr = fmt.Errorf("rate limited by Nominatim")
+			time.Sleep(2 * time.Second)
 			continue
 		}
-		suggestions = append(suggestions, AddressSuggestion{
-			Display: r.DisplayName,
-			Lat:     lat,
-			Lon:     lon,
-		})
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		if resp.StatusCode != 200 {
+			lastErr = fmt.Errorf("Nominatim returned status %d", resp.StatusCode)
+			continue
+		}
+
+		var results []nominatimResult
+		if err := json.Unmarshal(body, &results); err != nil {
+			lastErr = err
+			continue
+		}
+
+		var suggestions []AddressSuggestion
+		for _, r := range results {
+			lat, err := strconv.ParseFloat(r.Lat, 64)
+			if err != nil {
+				continue
+			}
+			lon, err := strconv.ParseFloat(r.Lon, 64)
+			if err != nil {
+				continue
+			}
+			suggestions = append(suggestions, AddressSuggestion{
+				Display: r.DisplayName,
+				Lat:     lat,
+				Lon:     lon,
+			})
+		}
+
+		return suggestions, nil
 	}
 
-	return suggestions, nil
+	return nil, lastErr
 }
