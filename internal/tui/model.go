@@ -806,7 +806,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if i < 2 && newVal != oldVal && len(newVal) >= 2 {
 				m.suggestInput = i
 				m.lastInputVal = newVal
-				return m, tea.Tick(1500*time.Millisecond, func(t time.Time) tea.Msg {
+				return m, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
 					return tickMsg(t)
 				})
 			}

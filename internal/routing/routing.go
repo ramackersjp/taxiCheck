@@ -250,8 +250,6 @@ func SuggestAddresses(query string) ([]AddressSuggestion, error) {
 
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
-		waitForNominatim()
-
 		reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
 		req, err := http.NewRequest("GET", reqURL, nil)
 		if err != nil {
