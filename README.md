@@ -23,20 +23,21 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 
 ### From Source
 
-The repository's default branch is the **latest stable release**, so a plain `git clone` gives you the stable version automatically.
+For a normal install you get the **latest stable release** by explicitly checking out the stable branch after cloning (the repo's default branch is `dev` for development, and is intentionally not what you want for a production install).
 
 ```bash
 git clone https://github.com/jp/taxiprijs.git
 cd taxiprijs
+git checkout v1.0.1   # latest stable release
 cp .env.example .env
 go build -o taxiprijs ./cmd/taxiprijs
 ```
 
-You can verify which branch you are on with `git branch --show-current`. By default this is the latest stable branch (e.g. `v1.0.1`).
+Use `git branch --show-current` to confirm you are on the stable branch.
 
-> **Tip:** Want the latest in-development features instead? Switch to the `dev` branch:
+> **Tip:** Want the latest in-development features instead? Stay on (or switch to) the `dev` branch:
 > ```bash
-> git checkout dev
+> git checkout dev   # may already be checked out after clone
 > go build -o taxiprijs ./cmd/taxiprijs
 > ```
 > The `dev` branch is chaotic and may break at any time. You can also switch branches from within the app (menu option **6**).
@@ -130,11 +131,11 @@ On first launch, the application will perform initial setup:
 
 | Branch | Purpose | Stability |
 |--------|---------|-----------|
-| `v1.0.1` | Stable release (**default**) | Current stable version, what you get on install |
-| `dev` | Development | Chaotic, unstable, may break at any time |
+| `dev` | Development (GitHub default) | Chaotic, unstable, may break at any time |
+| `v1.0.1` | Stable release | Current stable version, recommended for installs |
 | `main` | Production | Only merged from stable releases |
 
-> **Note:** The default branch is the latest stable release, so fresh installs run the stable version. Use `dev` only if you want the latest in-development features.
+> **Note:** The GitHub default branch is `dev` for development. For a normal install, check out the latest stable branch (as shown in [From Source](#from-source)) so you run a stable release. Use `dev` only if you want the latest in-development features.
 >
 > **Important:** For new features, always create a branch from `dev`, not from stable releases.
 
