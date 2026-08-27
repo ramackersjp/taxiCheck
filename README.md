@@ -111,7 +111,7 @@ On first launch, the application will perform initial setup:
 1. Press **7** from the main menu
 2. First confirmation: "Are you sure?" - press **y** to continue
 3. Second confirmation: "Are you REALLY sure?" - press **y** to uninstall
-4. The app removes the binary, desktop entry, man page, and configuration
+4. The app removes the binary, desktop entry, man page, configuration, and the Omarchy (QML) plugin
 
 > **Safety:** The two-step confirmation ensures you don't accidentally uninstall.
 
@@ -305,7 +305,7 @@ The easiest way is from within the running app (menu option **7**) or via `make 
 make uninstall
 ```
 
-This removes the binary, desktop entry, man page, and configuration for you.
+This removes the binary, desktop entry, man page, configuration, and the Omarchy (QML/bar widget) plugin for you.
 
 ### Manual Uninstall
 
@@ -323,6 +323,11 @@ sudo rm -f /usr/local/share/man/man1/taxiprijs.1
 
 # Remove configuration
 rm -rf ~/.taxiprijs
+
+# Remove Omarchy (QML) plugin if installed
+rm -rf ~/.config/omarchy/plugins/jp.taxiprijs
 ```
+
+To also remove the plugin from the bar layout in `~/.config/omarchy/shell.json`, either run `omarchy plugin remove jp.taxiprijs` or delete the `{ "id": "jp.taxiprijs" }` widget entry.
 
 The `-f` flag prevents errors if a file does not exist. Use absolute paths so the commands work from any directory.
