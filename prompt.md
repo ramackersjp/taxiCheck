@@ -151,6 +151,8 @@ taxiprijs/
 - Requires internet connection for route calculation
 - No telemetry or tracking
 - Configuration must be human-editable
+- Nominatim rate limit: max 1 request per second (enforced by rate limiter)
+- Rate limiter releases mutex before sleeping to prevent blocking suggestion requests
 
 ## Current Features
 - Real-time route calculation via OpenStreetMap
@@ -165,6 +167,7 @@ taxiprijs/
 - Keyboard-only navigation
 - English and Dutch language support
 - Fastest/shortest route mode toggle (press F2 on calc screen)
+- Address suggestions while typing (1 second debounce)
 - Version display in main menu
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI
