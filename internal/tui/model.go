@@ -368,6 +368,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.branchStatus = ""
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -1200,7 +1201,6 @@ func (m Model) viewMain() string {
 	if m.branchStatus != "" {
 		b.WriteString("\n")
 		b.WriteString(successStyle.Render(m.branchStatus))
-		m.branchStatus = ""
 	}
 
 	b.WriteString("\n")
