@@ -123,25 +123,25 @@ type Model struct {
 	width     int
 	height    int
 
-	suggestions    []routing.AddressSuggestion
-	suggestionIdx  int
-	showSuggest    bool
-	suggestInput   int
-	lastInputVal   string
+	suggestions   []routing.AddressSuggestion
+	suggestionIdx int
+	showSuggest   bool
+	suggestInput  int
+	lastInputVal  string
 
-	latestTag      string
-	hasUpdate      bool
-	updateChecked  bool
-	updateStatus   string
-	currentBranch  string
-	branchList     []string
-	branchIdx      int
-	branchStatus   string
-	uninstallStep  int
+	latestTag       string
+	hasUpdate       bool
+	updateChecked   bool
+	updateStatus    string
+	currentBranch   string
+	branchList      []string
+	branchIdx       int
+	branchStatus    string
+	uninstallStep   int
 	uninstallStatus string
-	settingsStep   int
-	settingsLang   string
-	setupDone      bool
+	settingsStep    int
+	settingsLang    string
+	setupDone       bool
 }
 
 func NewModel() Model {
@@ -851,29 +851,75 @@ func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) checkUpdate() tea.Cmd {
 	currentVer := appVersion
 	return func() tea.Msg {
-		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Get("https://api.github.com/repos/ramackersjp/taxiprijs/releases/latest")
-		if err != nil {
-			return updateCheckMsg{err: err}
-		}
-		defer resp.Body.Close()
+		dir := gitRepoDir()
 
-		if resp.StatusCode == 404 {
-			return updateCheckMsg{hasUpdate: false}
+		branch := ""
+		if dir != "" {
+			if out, err := exec.Command("git", "-C", dir, "symbolic-ref", "--short", "HEAD").Output(); err == nil {
+				branch = strings.TrimSpace(string(out))
+			}
 		}
 
-		var release struct {
-			TagName string `json:"tag_name"`
+		// The stable branch tracks GitHub releases; dev (and any other branch)
+		// receives updates via the remote git branch.
+		if branch == "v1.0.0" {
+			return releaseCheckUpdate(currentVer)
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-			return updateCheckMsg{err: err}
-		}
+		return gitCheckUpdate(dir, branch)
+	}
+}
 
-		hasUpdate := release.TagName != currentVer
-		return updateCheckMsg{
-			latestTag: release.TagName,
-			hasUpdate: hasUpdate,
-		}
+// gitCheckUpdate compares the current branch against its remote so that new
+// commits merged (e.g. into origin/dev) are detected as an available update.
+func gitCheckUpdate(dir, branch string) updateCheckMsg {
+	if dir == "" || branch == "" {
+		return updateCheckMsg{hasUpdate: false}
+	}
+	remote := "origin/" + branch
+
+	if err := exec.Command("git", "-C", dir, "fetch", "origin", branch).Run(); err != nil {
+		return updateCheckMsg{hasUpdate: false}
+	}
+
+	out, err := exec.Command("git", "-C", dir, "rev-list", "--count", "HEAD.."+remote).Output()
+	if err != nil {
+		return updateCheckMsg{hasUpdate: false}
+	}
+	count, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil || count <= 0 {
+		return updateCheckMsg{hasUpdate: false}
+	}
+
+	return updateCheckMsg{
+		latestTag: fmt.Sprintf("%d commits behind", count),
+		hasUpdate: true,
+	}
+}
+
+// releaseCheckUpdate compares the running version against the latest GitHub
+// release, used for the stable v1.0.0 branch.
+func releaseCheckUpdate(currentVer string) updateCheckMsg {
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("https://api.github.com/repos/ramackersjp/taxiprijs/releases/latest")
+	if err != nil {
+		return updateCheckMsg{err: err}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 404 {
+		return updateCheckMsg{hasUpdate: false}
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return updateCheckMsg{err: err}
+	}
+
+	return updateCheckMsg{
+		latestTag: release.TagName,
+		hasUpdate: release.TagName != currentVer,
 	}
 }
 
