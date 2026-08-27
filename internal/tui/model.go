@@ -852,7 +852,7 @@ func (m Model) checkUpdate() tea.Cmd {
 	currentVer := appVersion
 	return func() tea.Msg {
 		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Get("https://api.github.com/repos/jp/taxiprijs/releases/latest")
+		resp, err := client.Get("https://api.github.com/repos/ramackersjp/taxiprijs/releases/latest")
 		if err != nil {
 			return updateCheckMsg{err: err}
 		}
