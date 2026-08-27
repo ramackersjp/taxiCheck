@@ -842,12 +842,12 @@ func (m Model) pullUpdate() tea.Cmd {
 
 func (m Model) fetchBranches() tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+		cmd := exec.Command("git", "symbolic-ref", "--short", "HEAD")
 		output, err := cmd.Output()
-		if err != nil {
-			return branchResultMsg{err: err}
+		current := "HEAD"
+		if err == nil {
+			current = strings.TrimSpace(string(output))
 		}
-		current := strings.TrimSpace(string(output))
 
 		branches := []string{"dev", "v1.0.0"}
 
@@ -860,7 +860,7 @@ func (m Model) fetchBranches() tea.Cmd {
 
 func (m Model) switchBranch(branch string) tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("git", "checkout", branch)
+		cmd := exec.Command("git", "checkout", "-B", branch, "origin/"+branch)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return branchSwitchMsg{err: fmt.Errorf("%s: %s", err, string(output))}
