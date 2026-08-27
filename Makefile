@@ -35,6 +35,8 @@ install: build
 uninstall:
 	sudo rm -f /usr/local/bin/$(APP_NAME)
 	sudo rm -f /usr/share/applications/$(APP_NAME).desktop
+	sudo rm -f /usr/local/share/man/man1/$(APP_NAME).1
+	rm -rf $$HOME/.$(APP_NAME)
 	@echo "Uninstalled"
 
 clean:
