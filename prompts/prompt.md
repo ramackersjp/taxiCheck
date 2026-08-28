@@ -186,7 +186,7 @@ taxiprijs/
 - Address suggestions while typing (300ms debounce)
 - Version display in main menu
 - Check for updates from GitHub
-- Pull updates via git pull from the TUI
+- Pull updates via git pull from the TUI (the binary is rebuilt automatically)
 - Switch between dev and stable branches from the TUI (including older releases like v1.0.0)
 - Local changes stashed and restored automatically on branch switch
 - Two-step uninstall confirmation from the main menu

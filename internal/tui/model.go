@@ -96,8 +96,11 @@ type updateCheckMsg struct {
 }
 
 type updateResultMsg struct {
-	success bool
-	err     error
+	success       bool
+	err           error
+	rebuilt       string
+	rebuildErr    error
+	reinstallHint bool
 }
 
 type branchResultMsg struct {
@@ -317,6 +320,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.updateStatus = t(m.lang, "update_success")
 			m.hasUpdate = false
+			if msg.rebuilt != "" {
+				m.updateStatus += "\n" + t(m.lang, "update_rebuilt")
+			}
+			if msg.rebuildErr != nil {
+				m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_rebuild_fail"), msg.rebuildErr)
+			}
+			if msg.reinstallHint {
+				m.updateStatus += "\n" + t(m.lang, "update_reinstall")
+			}
 		}
 		return m, nil
 	case branchResultMsg:
@@ -970,8 +982,39 @@ func (m Model) pullUpdate() tea.Cmd {
 		if err != nil {
 			return updateResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
 		}
-		return updateResultMsg{success: true}
+
+		// A git pull only updates the source; rebuild the binary so the new
+		// code is actually used on the next launch.
+		msg := updateResultMsg{success: true}
+		if dir != "" {
+			if path, buildErr := rebuildBinary(dir); buildErr != nil {
+				msg.rebuildErr = buildErr
+			} else {
+				msg.rebuilt = path
+			}
+			// If the app runs from an installed location (not the checkout),
+			// the rebuilt repo copy must be installed again to take effect.
+			if exe, err := os.Executable(); err == nil {
+				if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+					if filepath.Dir(resolved) != filepath.Clean(dir) {
+						msg.reinstallHint = true
+					}
+				}
+			}
+		}
+		return msg
 	}
+}
+
+// rebuildBinary runs `go build` inside the repository so the pulled source is
+// compiled into the checkout's taxiprijs binary.
+func rebuildBinary(dir string) (string, error) {
+	build := exec.Command("go", "build", "-o", "taxiprijs", "./cmd/taxiprijs")
+	build.Dir = dir
+	if out, err := build.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("%s: %s", err, strings.TrimSpace(string(out)))
+	}
+	return filepath.Join(dir, "taxiprijs"), nil
 }
 
 func (m Model) fetchBranches() tea.Cmd {

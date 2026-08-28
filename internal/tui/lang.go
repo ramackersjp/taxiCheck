@@ -100,14 +100,17 @@ var translations = map[string]map[string]string{
 		"result_help":     "Press Enter or Esc to calculate again | q: quit",
 
 		// Update
-		"update_title":      "Check for Updates",
-		"update_current":    "Current version: ",
-		"update_available":  "Update available: ",
-		"update_up_to_date": "You are running the latest version",
-		"update_pull":       " Pull update (git pull)",
-		"update_recheck":    " Re-check for updates",
-		"update_success":    "Update pulled successfully!",
-		"update_help":       "Esc/Enter: back | u: pull update | r: re-check",
+		"update_title":        "Check for Updates",
+		"update_current":      "Current version: ",
+		"update_available":    "Update available: ",
+		"update_up_to_date":   "You are running the latest version",
+		"update_pull":         " Pull update (git pull)",
+		"update_recheck":      " Re-check for updates",
+		"update_success":      "Update pulled successfully!",
+		"update_rebuilt":      "The app was rebuilt. Restart to use the new version.",
+		"update_rebuild_fail": "Update pulled, but rebuilding the app failed: %s",
+		"update_reinstall":    "If installed system-wide, run 'sudo make install' to apply.",
+		"update_help":         "Esc/Enter: back | u: pull update | r: re-check",
 
 		// Branch
 		"branch_title":          "Switch Branch",
@@ -255,14 +258,17 @@ var translations = map[string]map[string]string{
 		"result_help":     "Druk op Enter of Esc om opnieuw te berekenen | q: afsluiten",
 
 		// Update
-		"update_title":      "Controleer op Updates",
-		"update_current":    "Huidige versie: ",
-		"update_available":  "Update beschikbaar: ",
-		"update_up_to_date": "Je draait de nieuwste versie",
-		"update_pull":       " Update ophalen (git pull)",
-		"update_recheck":    " Opnieuw controleren",
-		"update_success":    "Update succesvol opgehaald!",
-		"update_help":       "Esc/Enter: terug | u: update ophalen | r: opnieuw controleren",
+		"update_title":        "Controleer op Updates",
+		"update_current":      "Huidige versie: ",
+		"update_available":    "Update beschikbaar: ",
+		"update_up_to_date":   "Je draait de nieuwste versie",
+		"update_pull":         " Update ophalen (git pull)",
+		"update_recheck":      " Opnieuw controleren",
+		"update_success":      "Update succesvol opgehaald!",
+		"update_rebuilt":      "De app is opnieuw gebouwd. Herstart om de nieuwe versie te gebruiken.",
+		"update_rebuild_fail": "Update opgehaald, maar het herbouwen van de app is mislukt: %s",
+		"update_reinstall":    "Systeemwijd geïnstalleerd? Voer 'sudo make install' uit om toe te passen.",
+		"update_help":         "Esc/Enter: terug | u: update ophalen | r: opnieuw controleren",
 
 		// Branch
 		"branch_title":          "Wissel Branch",

@@ -17,7 +17,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Unicode block art taxi logo
 - Version display in main menu
 - Check for updates from GitHub
-- Pull updates directly from the TUI
+- Pull updates directly from the TUI (the app is rebuilt automatically)
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
 - Omarchy Quattro bar widget that launches the app from the desktop bar
@@ -128,7 +128,7 @@ On first launch, the application will perform initial setup:
 
 1. Press **5** from the main menu
 2. On a stable release branch, the app compares the running version against the latest GitHub release. On `dev`, it fetches the remote and reports how many commits the local branch is behind
-3. If an update is available, press **u** to pull it via `git pull`
+3. If an update is available, press **u** to pull it via `git pull`; the app is rebuilt automatically, so the next launch runs the new version
 4. Press **r** to re-check
 
 ### Switching Branches
