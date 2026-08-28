@@ -1,5 +1,5 @@
 APP_NAME := taxiprijs
-VERSION  := 1.1.0
+VERSION  := 1.0.1
 GOFLAGS  := -trimpath
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 PLUGIN_ID := jp.taxiprijs

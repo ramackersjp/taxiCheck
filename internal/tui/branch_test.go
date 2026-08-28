@@ -45,39 +45,27 @@ func TestParseRefNamesDoesNotKeepAmbiguousShortName(t *testing.T) {
 }
 
 func TestSortSwitchableBranchesDevThenNewest(t *testing.T) {
-	got := []string{"v1.1.0", "dev", "v1.2.0", "v2.0.0"}
+	got := []string{"v1.0.0", "dev", "v1.0.1", "v2.0.0"}
 	sortSwitchableBranches(got)
-	want := []string{"dev", "v2.0.0", "v1.2.0", "v1.1.0"}
+	want := []string{"dev", "v2.0.0", "v1.0.1", "v1.0.0"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
 
-func TestRetiredVersionsAreNotSwitchable(t *testing.T) {
-	if switchableBranch("v1.0.0") || switchableBranch("v1.0.1") {
-		t.Fatal("v1.0.0 and v1.0.1 must not be switchable")
-	}
-	if !switchableBranch("v1.1.0") || !switchableBranch("dev") {
-		t.Fatal("dev and v1.1.0 must stay switchable")
-	}
-	if !switchableBranch("v1.2.0") {
-		t.Fatal("future stable versions must stay switchable")
-	}
-}
-
 func TestCurrentGitBranchUnambiguousWithTag(t *testing.T) {
 	dir := initAmbiguousVersionRepo(t)
-	gitIn(t, dir, "checkout", "v1.1.0")
+	gitIn(t, dir, "checkout", "v1.0.1")
 
 	got := currentGitBranch(dir)
-	if got != "v1.1.0" {
-		t.Fatalf("currentGitBranch = %q, want v1.1.0", got)
+	if got != "v1.0.1" {
+		t.Fatalf("currentGitBranch = %q, want v1.0.1", got)
 	}
 }
 
 func TestDetectVersionWithTagAndBranch(t *testing.T) {
 	dir := initAmbiguousVersionRepo(t)
-	gitIn(t, dir, "checkout", "v1.1.0")
+	gitIn(t, dir, "checkout", "v1.0.1")
 	restoreRepoOverrides := overrideRepoLookup(t, dir)
 	defer restoreRepoOverrides()
 
@@ -85,15 +73,13 @@ func TestDetectVersionWithTagAndBranch(t *testing.T) {
 	defer func() { appVersion = orig }()
 	appVersion = "dev"
 	DetectVersion()
-	if appVersion != "v1.1.0" {
-		t.Fatalf("appVersion = %q, want v1.1.0", appVersion)
+	if appVersion != "v1.0.1" {
+		t.Fatalf("appVersion = %q, want v1.0.1", appVersion)
 	}
 }
 
 func TestFetchBranchesListsVersionNotHeadsPrefix(t *testing.T) {
 	dir := initAmbiguousVersionRepo(t)
-	gitIn(t, dir, "branch", "v1.0.0")
-	gitIn(t, dir, "branch", "v1.0.1")
 	restore := overrideRepoLookup(t, dir)
 	defer restore()
 
@@ -110,18 +96,15 @@ func TestFetchBranchesListsVersionNotHeadsPrefix(t *testing.T) {
 	}
 	found := false
 	for _, b := range res.branches {
-		if b == "heads/v1.1.0" {
-			t.Fatal("listed ambiguous short name heads/v1.1.0")
+		if b == "heads/v1.0.1" {
+			t.Fatal("listed ambiguous short name heads/v1.0.1")
 		}
-		if b == "v1.0.0" || b == "v1.0.1" {
-			t.Fatalf("retired version listed: %v", res.branches)
-		}
-		if b == "v1.1.0" {
+		if b == "v1.0.1" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("v1.1.0 missing from %v", res.branches)
+		t.Fatalf("v1.0.1 missing from %v", res.branches)
 	}
 	if len(res.branches) < 2 || res.branches[0] != "dev" {
 		t.Fatalf("dev should be first, got %v", res.branches)
@@ -141,7 +124,7 @@ func TestSwitchBranchRebuildsAndInstalls(t *testing.T) {
 	}
 	defer func() { applyBranchBinary = orig }()
 
-	msg := Model{}.switchBranch("v1.1.0")()
+	msg := Model{}.switchBranch("v1.0.1")()
 	res, ok := msg.(branchSwitchMsg)
 	if !ok {
 		t.Fatalf("got %T", msg)
@@ -156,19 +139,8 @@ func TestSwitchBranchRebuildsAndInstalls(t *testing.T) {
 		t.Fatal("expected builtPath so the UI can relaunch")
 	}
 	got := strings.TrimSpace(gitIn(t, dir, "branch", "--show-current"))
-	if got != "v1.1.0" {
-		t.Fatalf("HEAD = %q, want v1.1.0", got)
-	}
-}
-
-func TestSwitchRejectsRetiredVersion(t *testing.T) {
-	msg := Model{}.switchBranch("v1.0.1")()
-	res, ok := msg.(branchSwitchMsg)
-	if !ok {
-		t.Fatalf("got %T", msg)
-	}
-	if res.err == nil {
-		t.Fatal("expected error when switching to retired v1.0.1")
+	if got != "v1.0.1" {
+		t.Fatalf("HEAD = %q, want v1.0.1", got)
 	}
 }
 
@@ -192,7 +164,7 @@ func TestSwitchBranchDoesNotRunMakeInstall(t *testing.T) {
 		runMakeInstall = origMake
 	}()
 
-	msg := Model{}.switchBranch("v1.1.0")()
+	msg := Model{}.switchBranch("v1.0.1")()
 	res := msg.(branchSwitchMsg)
 	if res.err != nil {
 		t.Fatalf("switch: %v", res.err)
@@ -228,7 +200,7 @@ func TestSwitchRelaunchesNewBinary(t *testing.T) {
 	}()
 
 	m := Model{screen: screenBranch, lang: "en"}
-	updated, cmd := m.Update(branchSwitchMsg{success: true, newTag: "v1.1.0", builtPath: "/tmp/taxiprijs"})
+	updated, cmd := m.Update(branchSwitchMsg{success: true, newTag: "v1.0.0", builtPath: "/tmp/taxiprijs"})
 	mm := updated.(Model)
 	if mm.branchStatus == "" {
 		t.Fatal("expected a success status")
@@ -246,7 +218,7 @@ func TestSwitchBranchWhenTagAndBranchShareName(t *testing.T) {
 	restore := overrideRepoLookup(t, dir)
 	defer restore()
 
-	msg := Model{}.switchBranch("v1.1.0")()
+	msg := Model{}.switchBranch("v1.0.1")()
 	res, ok := msg.(branchSwitchMsg)
 	if !ok {
 		t.Fatalf("got %T", msg)
@@ -254,12 +226,12 @@ func TestSwitchBranchWhenTagAndBranchShareName(t *testing.T) {
 	if res.err != nil {
 		t.Fatalf("switch: %v", res.err)
 	}
-	if res.newTag != "v1.1.0" {
+	if res.newTag != "v1.0.1" {
 		t.Fatalf("newTag = %q", res.newTag)
 	}
 	got := strings.TrimSpace(gitIn(t, dir, "branch", "--show-current"))
-	if got != "v1.1.0" {
-		t.Fatalf("HEAD = %q, want v1.1.0", got)
+	if got != "v1.0.1" {
+		t.Fatalf("HEAD = %q, want v1.0.1", got)
 	}
 }
 
@@ -268,12 +240,12 @@ func TestSwitchBranchFallsBackWhenLocalAlreadyExists(t *testing.T) {
 	restore := overrideRepoLookup(t, dir)
 	defer restore()
 
-	if !gitRefExists(dir, "refs/heads/v1.1.0") {
-		t.Fatal("expected local v1.1.0 to exist")
+	if !gitRefExists(dir, "refs/heads/v1.0.1") {
+		t.Fatal("expected local v1.0.1 to exist")
 	}
 	// Same as the in-app path: creating -b would fail with
-	// "a branch named 'v1.1.0' already exists".
-	msg := Model{}.switchBranch("v1.1.0")()
+	// "a branch named 'v1.0.1' already exists".
+	msg := Model{}.switchBranch("v1.0.1")()
 	res := msg.(branchSwitchMsg)
 	if res.err != nil {
 		t.Fatalf("expected checkout of existing branch, got %v", res.err)
@@ -297,8 +269,8 @@ func gitIn(t *testing.T, dir string, args ...string) string {
 }
 
 // initAmbiguousVersionRepo is a taxiprijs-shaped repo on `dev` with both a
-// branch and a tag named v1.1.0 — the situation that made in-app switch fail
-// with "a branch named 'v1.1.0' already exists".
+// branch and a tag named v1.0.1 — the situation that made in-app switch fail
+// with "a branch named 'v1.0.1' already exists".
 func initAmbiguousVersionRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -313,14 +285,14 @@ func initAmbiguousVersionRepo(t *testing.T) string {
 	}
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-m", "init")
-	gitIn(t, dir, "branch", "v1.1.0")
-	gitIn(t, dir, "tag", "v1.1.0")
+	gitIn(t, dir, "branch", "v1.0.1")
+	gitIn(t, dir, "tag", "v1.0.1")
 
 	remote := t.TempDir()
 	gitIn(t, remote, "init", "--bare")
 	gitIn(t, dir, "remote", "add", "origin", remote)
 	gitIn(t, dir, "push", "-u", "origin", "refs/heads/dev:refs/heads/dev")
-	gitIn(t, dir, "push", "origin", "refs/heads/v1.1.0:refs/heads/v1.1.0")
+	gitIn(t, dir, "push", "origin", "refs/heads/v1.0.1:refs/heads/v1.0.1")
 	gitIn(t, dir, "fetch", "origin")
 	return dir
 }
