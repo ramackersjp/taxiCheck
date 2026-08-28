@@ -12,7 +12,7 @@ Dutch taxi fare calculator TUI application built with Go and Bubble Tea. Uses Op
 - Omarchy Quattro bar-widget plugin
 
 ## Technology Stack
-- Go 1.21+
+- Go 1.27+ (version directive in go.mod)
 - Bubble Tea (TUI framework)
 - Lip Gloss (styling)
 - go-toml/v2 (TOML configuration)
@@ -32,16 +32,20 @@ taxiprijs/
 │       ├── model.go               # Main model with all screens
 │       ├── style.go               # Lip Gloss styling
 │       ├── lang.go                # EN/NL translations
-│       └── logo.go                # ASCII taxi logo (Unicode block art)
+│       └── logo.go                # Unicode block art taxi logo
 ├── extras/
-│   ├── taxiprijs.desktop           # Linux desktop entry
+│   ├── taxiprijs.desktop          # Linux desktop entry
 │   └── omarchy-plugin/            # Omarchy Quattro bar-widget
 │       ├── manifest.json
-│       └── BarWidget.qml
+│       ├── BarWidget.qml
+│       ├── README.md
+│       └── reload-plugin.sh       # Dev helper to deploy QML changes
 ├── .env.example                   # API configuration template
 ├── .env                           # API configuration (git-ignored)
+├── .gitignore                     # Ignores .env, binary, dist/
 ├── go.mod
-├── Makefile                       # Build, install, cross-compile
+├── go.sum
+├── Makefile                       # Build, install, uninstall, cross-compile
 ├── LICENSE
 ├── README.md
 ├── taxiprijs.1                    # Man page
@@ -78,8 +82,8 @@ taxiprijs/
 4. Help/Manual - Keyboard controls and documentation
 5. Initial Setup - First-run: language selection + pricing configuration
 6. Result - Shows route info (distance, duration) and calculated fare
-7. Check for Updates - Fetch latest version from GitHub, pull updates
-8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.1)
+7. Check for Updates - On stable branches compares the running version against the latest GitHub release; on dev compares the local branch with its remote (reports commits behind). Press `u` to pull, `r` to re-check
+8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.1); local changes are stashed before the switch and restored after it
 9. Uninstall - Two-step confirmation, then removes the application
 
 ## Logo
@@ -92,7 +96,7 @@ taxiprijs/
 - Step 1: "Are you sure you want to uninstall?" (y/n)
 - Step 2: "WARNING: This will remove all files. Are you REALLY sure?" (y/n)
 - Only proceeds with actual uninstall after both confirmations
-- Uses `make uninstall` to remove binary and desktop entry
+- Uses `make uninstall` to remove binary, desktop entry, man page, configuration, and the Omarchy bar widget (including its bar-layout entry)
 
 ## Fare Calculation
 - API provides distance (km) and duration (minutes) from route
@@ -123,13 +127,15 @@ taxiprijs/
 - `dev` - Development branch. **Chaotic, unstable, may break at any time.** All new features are developed here first. This is the **GitHub default branch** and the PR target. Not what you want for a production install.
 - `v1.0.1` - Stable release branch. This is the current stable version. Recommended for installs (documented `git checkout v1.0.1` in the README). Bug fixes only.
 - `main` - Stable releases only. Never commit directly to `main`.
-- Feature branches - Created from `dev` for each new feature (e.g. `feature/logo-and-uninstall-safety`).
+- Fix branches - `fix/<short-description>` created from `dev` for bug fixes.
+- Feature branches - `feature/<short-description>` created from `dev` for new features (e.g. `feature/logo-and-uninstall-safety`).
+- Docs branches - `docs/<short-description>` created from `dev` for documentation changes.
 
 ### Rules
 1. Development happens on `dev` branch
-2. Never commit directly to `main` or stable release branches
-3. Create feature branches from `dev` for new features
-4. Test before committing
+2. Never commit directly to `dev`, `main`, or stable release branches
+3. Create fix/feature/docs branches from `dev` and merge/push to `dev` via pull request
+4. Test before committing (`go test ./...`, `go vet ./...`, `gofmt -w .`)
 5. Never commit `.env` (contains API config)
 6. For new features, always branch from `dev`, not from stable releases
 7. The `dev` branch may be chaotic and unstable
@@ -174,14 +180,16 @@ taxiprijs/
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI
 - Switch between dev and stable branches from the TUI
+- Local changes stashed and restored automatically on branch switch
 - Two-step uninstall confirmation from the main menu
+- Omarchy Quattro bar widget installed by `make install` (launches the TUI from the bar)
 
 ## Installation
 
 ### Linux / Omarchy Quattro
 
 ```sh
-# Build and install binary + desktop entry
+# Build and install binary + desktop entry + Omarchy bar widget
 make install
 
 # Run from terminal
@@ -199,19 +207,18 @@ make build-windows    # Windows only
 
 ### Omarchy Quattro Bar Widget
 
-A QuickShell bar-widget plugin is included. It adds a taxi icon to the
-Omarchy bar that launches the TUI in a terminal.
+A QuickShell bar-widget plugin is included (`extras/omarchy-plugin/`). It adds
+a taxi icon to the Omarchy bar that launches the TUI in a terminal (left-click)
+and offers a small menu on right-click.
 
-```sh
-# Install plugin locally
-PLUGIN_DIR="$HOME/.config/omarchy/plugins/jp.taxiprijs"
-mkdir -p "$PLUGIN_DIR"
-cp extras/omarchy-plugin/* "$PLUGIN_DIR/"
-omarchy-shell shell rescanPlugins
-```
+`make install` installs it automatically:
 
-Then add `{ "id": "jp.taxiprijs" }` to your bar layout in
-`~/.config/omarchy/shell.json`.
+- copies the plugin to `~/.config/omarchy/plugins/jp.taxiprijs`
+- adds `{ "id": "jp.taxiprijs" }` to the bar layout in
+  `~/.config/omarchy/shell.json`
+- rescans plugins (`omarchy-shell shell rescanPlugins`)
+
+`make uninstall` removes the plugin and its bar-layout entry.
 
 ### macOS
 

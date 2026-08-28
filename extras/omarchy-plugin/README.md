@@ -12,7 +12,7 @@ No manual steps needed.
 If you installed the binary manually instead, install the plugin with:
 
 ```sh
-omarchy plugin add https://github.com/ramackersjp/taxiprijs.git --path extras/omarchy-plugin
+omarchy plugin add https://github.com/ramackersjp/taxiCheck.git --path extras/omarchy-plugin
 ```
 
 Or manually:
