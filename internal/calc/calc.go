@@ -44,12 +44,13 @@ func Calculate(input FareInput, groups []PassengerGroup) FareResult {
 
 func selectGroup(passengers int, groups []PassengerGroup) PassengerGroup {
 	for _, g := range groups {
+		name := strings.ToLower(g.Name)
 		switch {
-		case strings.Contains(g.Name, "max 4"):
+		case strings.Contains(name, "max 4") || strings.Contains(name, "max. 4"):
 			if passengers >= 1 && passengers <= 4 {
 				return g
 			}
-		case strings.Contains(g.Name, "5-8"):
+		case strings.Contains(name, "5-8"):
 			if passengers >= 5 && passengers <= 8 {
 				return g
 			}

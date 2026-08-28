@@ -20,12 +20,14 @@ func GetLogo() string {
 	var b strings.Builder
 	b.WriteString(taxiArt)
 	b.WriteString("\n")
-	b.WriteString(titleStyle.Render("TaxiCheck"))
+	// Inline styles without MarginBottom/MarginTop so the version stays
+	// on the same line as the title (titleStyle + helpStyle split it).
+	title := lipgloss.NewStyle().Bold(true).Foreground(黄色).Render("TaxiCheck")
 	ver := appVersion
 	if !strings.HasPrefix(ver, "v") {
 		ver = "v" + ver
 	}
-	b.WriteString(" " + helpStyle.Render(ver))
+	b.WriteString(title + " " + lipgloss.NewStyle().Foreground(灰色).Render(ver))
 	return logoBorderStyle.Render(b.String())
 }
 
