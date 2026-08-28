@@ -151,15 +151,46 @@ func goBinary() string {
 	return "go"
 }
 
-// rebuildBinary runs `go build` inside the repository so the pulled source is
-// compiled into the checkout's taxiprijs binary.
+// applyNewBinary rebuilds from dir and installs the result. Overridable in tests.
+var applyNewBinary = applyNewBinaryImpl
+
+func applyNewBinaryImpl(dir string) (builtPath string, rebuildErr, installErr error) {
+	built, err := rebuildBinary(dir)
+	if err != nil {
+		return "", err, nil
+	}
+	return built, nil, installBinary(built, dir)
+}
+
+// rebuildBinary compiles into a temp file, then atomically replaces the
+// checkout binary. `go build -o taxiprijs` on a running binary fails with
+// ETXTBSY ("text file busy") — that is how the Omarchy widget launches this
+// app — so the temp+rename path is required for in-app updates.
 func rebuildBinary(dir string) (string, error) {
-	build := exec.Command(goBinary(), "build", "-o", installedBinName, "./cmd/taxiprijs")
+	dest := filepath.Join(dir, installedBinName)
+	tmp, err := os.CreateTemp(dir, ".taxiprijs-build-*")
+	if err != nil {
+		return "", err
+	}
+	tmpName := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return "", err
+	}
+	defer os.Remove(tmpName)
+
+	build := exec.Command(goBinary(), "build", "-o", tmpName, "./cmd/taxiprijs")
 	build.Dir = dir
 	if out, err := build.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("%s: %s", err, strings.TrimSpace(string(out)))
 	}
-	return filepath.Join(dir, installedBinName), nil
+	if err := os.Chmod(tmpName, 0755); err != nil {
+		return "", err
+	}
+	if err := replaceFile(tmpName, dest); err != nil {
+		return "", err
+	}
+	return dest, nil
 }
 
 func absClean(p string) string {

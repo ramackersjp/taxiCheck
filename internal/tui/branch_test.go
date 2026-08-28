@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -110,6 +111,67 @@ func TestFetchBranchesListsVersionNotHeadsPrefix(t *testing.T) {
 	}
 }
 
+func TestSwitchBranchRebuildsAndInstalls(t *testing.T) {
+	dir := initAmbiguousVersionRepo(t)
+	restore := overrideRepoLookup(t, dir)
+	defer restore()
+
+	var called string
+	orig := applyNewBinary
+	applyNewBinary = func(d string) (string, error, error) {
+		called = d
+		return filepath.Join(d, "taxiprijs"), nil, nil
+	}
+	defer func() { applyNewBinary = orig }()
+
+	msg := Model{}.switchBranch("v1.0.1")()
+	res, ok := msg.(branchSwitchMsg)
+	if !ok {
+		t.Fatalf("got %T", msg)
+	}
+	if res.err != nil {
+		t.Fatalf("switch: %v", res.err)
+	}
+	if called != dir {
+		t.Fatalf("applyNewBinary dir=%q want %q (must rebuild this branch)", called, dir)
+	}
+	if res.builtPath == "" {
+		t.Fatal("expected builtPath so the UI can relaunch")
+	}
+	got := strings.TrimSpace(gitIn(t, dir, "branch", "--show-current"))
+	if got != "v1.0.1" {
+		t.Fatalf("HEAD = %q, want v1.0.1", got)
+	}
+}
+
+func TestSwitchRelaunchesNewBinary(t *testing.T) {
+	var got string
+	orig := execReplacedProcess
+	origExe := osExecutable
+	execReplacedProcess = func(bin string) error {
+		got = bin
+		return nil
+	}
+	osExecutable = func() (string, error) { return "", fmt.Errorf("none") }
+	defer func() {
+		execReplacedProcess = orig
+		osExecutable = origExe
+	}()
+
+	m := Model{screen: screenBranch, lang: "en"}
+	updated, cmd := m.Update(branchSwitchMsg{success: true, newTag: "v1.0.0", builtPath: "/tmp/taxiprijs"})
+	mm := updated.(Model)
+	if mm.branchStatus == "" {
+		t.Fatal("expected a success status")
+	}
+	if got != "/tmp/taxiprijs" {
+		t.Fatalf("relaunch path = %q", got)
+	}
+	if cmd == nil {
+		t.Fatal("expected Quit after a successful relaunch")
+	}
+}
+
 func TestSwitchBranchWhenTagAndBranchShareName(t *testing.T) {
 	dir := initAmbiguousVersionRepo(t)
 	restore := overrideRepoLookup(t, dir)
@@ -197,14 +259,19 @@ func initAmbiguousVersionRepo(t *testing.T) string {
 func overrideRepoLookup(t *testing.T, dir string) func() {
 	t.Helper()
 	origExe, origHome, origWd := osExecutable, osUserHome, osGetwd
+	origApply := applyNewBinary
 	home := t.TempDir()
 	elsewhere := t.TempDir()
 	osGetwd = func() (string, error) { return dir, nil }
 	osUserHome = func() (string, error) { return home, nil }
 	osExecutable = func() (string, error) { return filepath.Join(elsewhere, "taxiprijs"), nil }
+	applyNewBinary = func(string) (string, error, error) {
+		return filepath.Join(dir, "taxiprijs"), nil, nil
+	}
 	return func() {
 		osExecutable = origExe
 		osUserHome = origHome
 		osGetwd = origWd
+		applyNewBinary = origApply
 	}
 }

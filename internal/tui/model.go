@@ -189,6 +189,7 @@ type updateResultMsg struct {
 	err        error
 	rebuildErr error
 	installErr error
+	builtPath  string
 }
 
 type branchResultMsg struct {
@@ -198,9 +199,12 @@ type branchResultMsg struct {
 }
 
 type branchSwitchMsg struct {
-	success bool
-	err     error
-	newTag  string
+	success    bool
+	err        error
+	newTag     string
+	builtPath  string
+	rebuildErr error
+	installErr error
 }
 
 type uninstallResultMsg struct {
@@ -412,14 +416,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		if msg.err != nil {
 			m.err = msg.err.Error()
+			return m, nil
+		}
+		m.updateStatus = t(m.lang, "update_success")
+		m.hasUpdate = false
+		if msg.rebuildErr != nil {
+			m.updateStatus += "\n" + t(m.lang, "update_rebuild_fail")
+			return m, nil
+		}
+		if tryRelaunch(msg.builtPath) {
+			return m, tea.Quit
+		}
+		if msg.installErr != nil {
+			m.updateStatus += "\n" + t(m.lang, "update_install_fail")
 		} else {
-			m.updateStatus = t(m.lang, "update_success")
-			m.hasUpdate = false
-			if msg.rebuildErr != nil {
-				m.updateStatus += "\n" + t(m.lang, "update_rebuild_fail")
-			} else if msg.installErr != nil {
-				m.updateStatus += "\n" + t(m.lang, "update_install_fail")
-			}
+			m.updateStatus += "\n" + t(m.lang, "update_restart")
 		}
 		return m, nil
 	case branchResultMsg:
@@ -445,10 +456,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		if msg.err != nil {
 			m.err = msg.err.Error()
+			return m, nil
+		}
+		appVersion = msg.newTag
+		m.branchStatus = t(m.lang, "branch_switch_success")
+		m.screen = screenMain
+		if msg.rebuildErr != nil {
+			m.branchStatus += "\n" + t(m.lang, "update_rebuild_fail")
+			return m, nil
+		}
+		if tryRelaunch(msg.builtPath) {
+			return m, tea.Quit
+		}
+		if msg.installErr != nil {
+			m.branchStatus += "\n" + t(m.lang, "update_install_fail")
 		} else {
-			appVersion = msg.newTag
-			m.branchStatus = t(m.lang, "branch_switch_success")
-			m.screen = screenMain
+			m.branchStatus += "\n" + t(m.lang, "update_restart")
 		}
 		return m, nil
 	case uninstallResultMsg:
@@ -1155,16 +1178,13 @@ func (m Model) pullUpdate() tea.Cmd {
 
 		// A git pull only updates the source; rebuild and install the binary
 		// so the next launch actually runs the new version.
-		msg := updateResultMsg{success: true}
-		builtPath, buildErr := rebuildBinary(dir)
-		if buildErr != nil {
-			msg.rebuildErr = buildErr
-			return msg
+		built, rebuildErr, installErr := applyNewBinary(dir)
+		return updateResultMsg{
+			success:    true,
+			builtPath:  built,
+			rebuildErr: rebuildErr,
+			installErr: installErr,
 		}
-		if installErr := installBinary(builtPath, dir); installErr != nil {
-			msg.installErr = installErr
-		}
-		return msg
 	}
 }
 
@@ -1254,13 +1274,23 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 			return branchSwitchMsg{err: fmt.Errorf("%s: %s", err, string(output))}
 		}
 
+		// Rebuild from the clean checkout before restoring the stash, so the
+		// installed binary is this branch (dev / v1.0.0 / v1.0.1), not a mix
+		// of leftover uncommitted files from the previous one.
+		built, rebuildErr, installErr := applyNewBinary(dir)
+
 		if stashed {
-			stashOutput, stashErr := git("stash", "pop").CombinedOutput()
-			if stashErr != nil {
-				return branchSwitchMsg{err: fmt.Errorf("%s: %s", stashErr, string(stashOutput))}
-			}
+			// Best-effort: a stash conflict must not hide a successful switch
+			// after the new binary is already installed.
+			git("stash", "pop").Run()
 		}
-		return branchSwitchMsg{success: true, newTag: branch}
+		return branchSwitchMsg{
+			success:    true,
+			newTag:     branch,
+			builtPath:  built,
+			rebuildErr: rebuildErr,
+			installErr: installErr,
+		}
 	}
 }
 

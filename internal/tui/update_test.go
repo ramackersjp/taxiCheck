@@ -8,6 +8,13 @@ import (
 	"testing"
 )
 
+func TestMain(m *testing.M) {
+	execReplacedProcess = func(string) error {
+		return fmt.Errorf("relaunch disabled in tests")
+	}
+	os.Exit(m.Run())
+}
+
 func TestCopyFile(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "src")
@@ -150,6 +157,41 @@ func TestInstallBinaryCopiesToLocalBin(t *testing.T) {
 	}
 }
 
+func TestRebuildBinaryReplacesExistingOutput(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/tp\n\ngo 1.22\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmdDir := filepath.Join(dir, "cmd", "taxiprijs")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte("package main\nfunc main() {}\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(dir, "taxiprijs")
+	if err := os.WriteFile(dest, []byte("OLD-RUNNING-BINARY"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	got, err := rebuildBinary(dir)
+	if err != nil {
+		t.Fatalf("rebuildBinary: %v", err)
+	}
+	if got != dest {
+		t.Fatalf("path = %q, want %q", got, dest)
+	}
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) == "OLD-RUNNING-BINARY" {
+		t.Fatal("rebuild left the previous binary in place")
+	}
+	if info, err := os.Stat(dest); err != nil || info.Mode().Perm()&0111 == 0 {
+		t.Fatal("rebuilt binary must be executable")
+	}
+}
+
 func TestInstallErrorDoesNotShowPaths(t *testing.T) {
 	m := Model{screen: screenUpdate, lang: "en"}
 	updated, _ := m.Update(updateResultMsg{
@@ -162,6 +204,60 @@ func TestInstallErrorDoesNotShowPaths(t *testing.T) {
 	}
 	if !strings.Contains(mm.updateStatus, "could not be installed") {
 		t.Fatalf("expected generic install failure, got %q", mm.updateStatus)
+	}
+}
+
+func TestUpdateSuccessRelaunchesNewBinary(t *testing.T) {
+	var got string
+	orig := execReplacedProcess
+	origExe := osExecutable
+	execReplacedProcess = func(bin string) error {
+		got = bin
+		return nil
+	}
+	osExecutable = func() (string, error) { return "", fmt.Errorf("none") }
+	defer func() {
+		execReplacedProcess = orig
+		osExecutable = origExe
+	}()
+
+	m := Model{screen: screenUpdate, lang: "en"}
+	updated, cmd := m.Update(updateResultMsg{success: true, builtPath: "/tmp/taxiprijs"})
+	if got != "/tmp/taxiprijs" {
+		t.Fatalf("relaunch path = %q", got)
+	}
+	if cmd == nil {
+		t.Fatal("expected Quit after a successful relaunch")
+	}
+	_ = updated
+}
+
+func TestPullUpdateAppliesNewBinary(t *testing.T) {
+	dir := initAmbiguousVersionRepo(t)
+	restore := overrideRepoLookup(t, dir)
+	defer restore()
+
+	var called string
+	orig := applyNewBinary
+	applyNewBinary = func(d string) (string, error, error) {
+		called = d
+		return filepath.Join(d, "taxiprijs"), nil, nil
+	}
+	defer func() { applyNewBinary = orig }()
+
+	msg := Model{lang: "en"}.pullUpdate()()
+	res, ok := msg.(updateResultMsg)
+	if !ok {
+		t.Fatalf("got %T", msg)
+	}
+	if res.err != nil {
+		t.Fatalf("pull: %v", res.err)
+	}
+	if called != dir {
+		t.Fatalf("applyNewBinary dir=%q want %q", called, dir)
+	}
+	if res.builtPath == "" {
+		t.Fatal("expected builtPath so the UI can relaunch")
 	}
 }
 
