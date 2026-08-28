@@ -6,6 +6,8 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 
 - Real-time route calculation via OpenStreetMap (OSRM + Nominatim)
 - Address-based fare calculation within the Netherlands
+- Live address suggestions while typing (Nominatim, 300ms debounce)
+- Fastest or shortest route mode (toggle with F2)
 - Support for two passenger groups: Taxi auto (max. 4) and Taxi bus (5-8)
 - Configurable pricing: board fee, per km rate, per minute rate
 - TOML-based configuration that can be manually edited
@@ -18,6 +20,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Pull updates directly from the TUI
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
+- Omarchy Quattro bar widget that launches the app from the desktop bar
 
 ## Installation
 
@@ -26,11 +29,23 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 For a normal install you get the **latest stable release** by explicitly checking out the stable branch after cloning (the repo's default branch is `dev` for development, and is intentionally not what you want for a production install).
 
 ```bash
-git clone https://github.com/jp/taxiprijs.git
-cd taxiprijs
+git clone https://github.com/ramackersjp/taxiCheck.git
+cd taxiCheck
 git checkout v1.0.1   # latest stable release
 cp .env.example .env
+```
+
+Build and run locally:
+
+```bash
 go build -o taxiprijs ./cmd/taxiprijs
+./taxiprijs
+```
+
+Or install system-wide with `make install`, which installs the binary (`/usr/local/bin/taxiprijs`), the desktop entry, and the Omarchy bar widget (asks for `sudo` for the system files):
+
+```bash
+make install
 ```
 
 Use `git branch --show-current` to confirm you are on the stable branch.
@@ -47,10 +62,25 @@ Use `git branch --show-current` to confirm you are on the stable branch.
 - Go 1.21 or later
 - Internet connection (for route calculation via OpenStreetMap)
 - Git (for update and branch features)
+- `make` (only needed for `make install` / `make uninstall`)
 
 ### Recommended Font
 
 For the best experience, use [JetBrains Nerd Font](https://www.nerdfonts.com/). The application will work with any terminal font, but the styling is optimized for JetBrains Nerd Font.
+
+### Omarchy Quattro Bar Widget
+
+A QuickShell bar widget for Omarchy Quattro is bundled in `extras/omarchy-plugin/`. It adds a taxi icon to the bar that launches TaxiCheck in a terminal (left-click) and offers a small menu with right-click (Open TaxiCheck, Handleiding, Config map, Quit).
+
+`make install` sets it up automatically:
+
+- copies the plugin to `~/.config/omarchy/plugins/jp.taxiprijs`
+- adds `{ "id": "jp.taxiprijs" }` to the bar layout in `~/.config/omarchy/shell.json`
+- rescans plugins (`omarchy-shell shell rescanPlugins`)
+
+If the widget is not in the section you want, move the entry to the `left`, `center`, or `right` array of `.bar.layout` in `~/.config/omarchy/shell.json` and rescan. `make uninstall` removes the plugin and its bar-layout entry.
+
+> **Note:** the widget's launch command in `BarWidget.qml` points at a hard-coded build path; adjust it if you install the binary elsewhere.
 
 ## Usage
 
@@ -76,7 +106,7 @@ On first launch, the application will perform initial setup:
 - **1** - Calculate Fare
 - **2** - Settings
 - **3** - Help/Manual
-- **4** - Initial Setup
+- **4** - Initial Setup (first run only)
 - **5** - Check for Updates
 - **6** - Switch Branch
 - **7** - Uninstall
@@ -84,16 +114,17 @@ On first launch, the application will perform initial setup:
 
 ### Calculating a Fare
 
-1. Enter start address (e.g. "Dam Square, Amsterdam")
+1. Enter start address (e.g. "Dam Square, Amsterdam") - suggestions appear while typing; use ↑/↓ + Enter to pick one
 2. Enter destination (e.g. "Central Station, Rotterdam")
 3. Enter number of passengers (1-8)
-4. Press Enter - the app calculates the route and fare automatically
-5. View the route details (distance, duration) and fare breakdown
+4. Press F2 to toggle between fastest and shortest route mode
+5. Press Enter - the app calculates the route and fare automatically
+6. View the route details (distance, duration) and fare breakdown
 
 ### Checking for Updates
 
 1. Press **5** from the main menu
-2. The app checks GitHub for the latest release
+2. On a stable release branch, the app compares the running version against the latest GitHub release. On `dev`, it fetches the remote and reports how many commits the local branch is behind
 3. If an update is available, press **u** to pull it via `git pull`
 4. Press **r** to re-check
 
@@ -102,7 +133,9 @@ On first launch, the application will perform initial setup:
 1. Press **6** from the main menu
 2. Use ↑/↓ to select a branch
 3. Press **Space** to switch to the selected branch
-4. Available branches: `dev` and stable release branches (e.g. `v1.0.1`)
+4. Available branches: `dev` and the current stable release (`v1.0.1`)
+
+Local (uncommitted) changes are automatically stashed before the switch and restored afterwards, so nothing is lost.
 
 > **Note:** The `dev` branch may be chaotic and unstable. Use the stable release branch for production use.
 
@@ -122,10 +155,13 @@ On first launch, the application will perform initial setup:
 | 1-7 | Select menu option |
 | Tab | Next input field |
 | Shift+Tab | Previous input field |
-| Enter | Submit/Save |
+| Enter | Submit/Save / select address suggestion |
 | Esc | Back/Cancel |
 | y/n | Yes/No for confirmations |
 | q | Quit |
+| F2 | Toggle fastest/shortest route mode (Calculate Fare) |
+| Space | Switch to the selected branch (Switch Branch) |
+| u / r | Pull update / re-check (Check for Updates) |
 
 ## Branch Strategy
 
@@ -199,6 +235,12 @@ Access Settings from the main menu (option 2) to modify pricing without manually
 
 ## Pricing
 
+The fare is calculated as:
+
+```
+fare = board_fee + (distance_km × per_km) + (duration_min × per_minute)
+```
+
 - **Board Fee (Instaptarief)**: Initial charge when entering the taxi
 - **Per Km (Kilometertarief)**: Cost per kilometer driven
 - **Per Minute (Tijdtarief)**: Cost per minute of driving
@@ -210,7 +252,10 @@ The application uses two OpenStreetMap APIs:
 - **Nominatim** - Geocoding (converting addresses to coordinates)
 - **OSRM** - Routing (calculating distance and duration between coordinates)
 
-All addresses are limited to the Netherlands.
+- All addresses are limited to the Netherlands (Nominatim `countrycodes=nl`).
+- Nominatim requests are limited to 1 per second (rate limiter).
+- Geocoding retries up to 3 times, waiting 2s on HTTP 429.
+- The `USER_AGENT` from `.env` is sent on every request (required by the Nominatim usage policy).
 
 ## Manual
 
@@ -250,11 +295,19 @@ taxiprijs/
 │       ├── style.go             # Lip Gloss styling
 │       ├── lang.go              # EN/NL translations
 │       └── logo.go              # Unicode block art taxi logo
+├── extras/
+│   ├── taxiprijs.desktop        # Linux desktop entry
+│   └── omarchy-plugin/          # Omarchy Quattro bar widget
+│       ├── manifest.json
+│       ├── BarWidget.qml
+│       └── README.md
 ├── .env.example                 # API configuration template
 ├── .env                         # API configuration (git-ignored)
+├── .gitignore
 ├── go.mod
 ├── go.sum
 ├── LICENSE
+├── Makefile                     # Build, install, uninstall, cross-compile
 ├── README.md
 ├── taxiprijs.1                  # Man page
 └── prompt.md                    # Project knowledge
@@ -275,22 +328,31 @@ gofmt -w .
 
 ## Git Workflow
 
-- Development happens on the `dev` branch
-- Never commit directly to `main` or stable release branches
-- Create feature branches from `dev` for new features
-- Test before committing
-- Never commit `.env`
+- Development happens on the `dev` branch (GitHub default)
+- Never commit directly to `dev`, `main`, or stable release branches
+- Never commit `.env` or build artifacts (`taxiprijs`, `dist/`)
 
-### Making New Features
+### Development Branches
 
-1. Create a feature branch from `dev`:
+Every change gets its own branch from `dev`:
+
+- Bug fixes: `fix/<short-description>`
+- New features: `feature/<short-description>`
+- Docs: `docs/<short-description>`
+
+1. Create the branch from `dev`:
    ```bash
    git checkout dev
-   git checkout -b feature/my-new-feature
+   git checkout -b fix/my-fix
    ```
-2. Implement and test your changes
-3. Commit with descriptive messages
-4. Merge back to `dev` when ready
+2. Implement and test your changes:
+   ```bash
+   go test ./...
+   go vet ./...
+   gofmt -w .
+   ```
+3. Commit with a conventional, descriptive message: `fix: ...`, `feat: ...`, or `docs: ...`
+4. Push the branch and open a pull request targeting `dev`:
 
 ## License
 
