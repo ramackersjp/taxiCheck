@@ -183,7 +183,7 @@ taxiprijs/
 - Keyboard-only navigation
 - English and Dutch language support
 - Fastest/shortest route mode toggle (press F2 on calc screen)
-- Address suggestions while typing (300ms debounce)
+- Address suggestions while typing (Nominatim, rate-limited to 1 req/s, cached for the session)
 - Version display in main menu
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI (the binary is rebuilt and installed automatically)

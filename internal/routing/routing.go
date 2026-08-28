@@ -126,7 +126,7 @@ func Geocode(address string) (float64, float64, error) {
 
 		if resp.StatusCode == 429 {
 			resp.Body.Close()
-			lastErr = fmt.Errorf("Te veel verzoeken naar Nominatim, probeer opnieuw")
+			lastErr = fmt.Errorf("address lookup temporarily unavailable, try again")
 			time.Sleep(2 * time.Second)
 			continue
 		}
@@ -253,76 +253,101 @@ func CalculateRoute(startAddress, endAddress string, mode string) (*RouteResult,
 func SuggestAddresses(query string) ([]AddressSuggestion, error) {
 	LoadEnv()
 
-	if len(strings.TrimSpace(query)) < 2 {
+	q := strings.TrimSpace(query)
+	if len(q) < 2 {
 		return nil, nil
 	}
 
+	if res, ok := cachedSuggestions(q); ok {
+		return res, nil
+	}
+
 	params := url.Values{
-		"q":            {query + ", Netherlands"},
+		"q":            {q + ", Netherlands"},
 		"format":       {"json"},
-		"limit":        {"5"},
+		"limit":        {"10"},
 		"countrycodes": {"nl"},
 	}
 
-	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
-		reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
-		req, err := http.NewRequest("GET", reqURL, nil)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("User-Agent", userAgent)
+	// Respect Nominatim's usage policy (max 1 request per second). Without
+	// this, rapid typing overflows the server and triggers rate-limit
+	// responses, which made suggestions slow and error-prone.
+	waitForNominatim()
 
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
+	reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return nil, nil
+	}
+	req.Header.Set("User-Agent", userAgent)
 
-		if resp.StatusCode == 429 {
-			resp.Body.Close()
-			lastErr = fmt.Errorf("rate limited by Nominatim")
-			time.Sleep(2 * time.Second)
-			continue
-		}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, nil
+	}
+	defer resp.Body.Close()
 
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		resp.Body.Close()
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		if resp.StatusCode != 200 {
-			lastErr = fmt.Errorf("Nominatim returned status %d", resp.StatusCode)
-			continue
-		}
-
-		var results []nominatimResult
-		if err := json.Unmarshal(body, &results); err != nil {
-			lastErr = err
-			continue
-		}
-
-		var suggestions []AddressSuggestion
-		for _, r := range results {
-			lat, err := strconv.ParseFloat(r.Lat, 64)
-			if err != nil {
-				continue
-			}
-			lon, err := strconv.ParseFloat(r.Lon, 64)
-			if err != nil {
-				continue
-			}
-			suggestions = append(suggestions, AddressSuggestion{
-				Display: r.DisplayName,
-				Lat:     lat,
-				Lon:     lon,
-			})
-		}
-
-		return suggestions, nil
+	// Fail silently: the caller keeps the previous suggestions instead of
+	// showing a rate-limit/error message while the user is typing.
+	if resp.StatusCode != 200 {
+		return nil, nil
 	}
 
-	return nil, lastErr
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, nil
+	}
+
+	var results []nominatimResult
+	if err := json.Unmarshal(body, &results); err != nil {
+		return nil, nil
+	}
+
+	var suggestions []AddressSuggestion
+	for _, r := range results {
+		lat, err := strconv.ParseFloat(r.Lat, 64)
+		if err != nil {
+			continue
+		}
+		lon, err := strconv.ParseFloat(r.Lon, 64)
+		if err != nil {
+			continue
+		}
+		suggestions = append(suggestions, AddressSuggestion{
+			Display: r.DisplayName,
+			Lat:     lat,
+			Lon:     lon,
+		})
+	}
+
+	storeSuggestions(q, suggestions)
+	return suggestions, nil
+}
+
+var (
+	suggestCacheMu sync.Mutex
+	suggestCache   = map[string][]AddressSuggestion{}
+)
+
+// cachedSuggestions returns the last fetched results for a query, so repeats
+// (e.g. backtracking while typing) are answered instantly without a request.
+func cachedSuggestions(q string) ([]AddressSuggestion, bool) {
+	suggestCacheMu.Lock()
+	defer suggestCacheMu.Unlock()
+	res, ok := suggestCache[strings.ToLower(q)]
+	return res, ok
+}
+
+// storeSuggestions records results for a query, evicting the oldest entry
+// when the cache grows too large.
+func storeSuggestions(q string, res []AddressSuggestion) {
+	suggestCacheMu.Lock()
+	defer suggestCacheMu.Unlock()
+	if len(suggestCache) >= 300 {
+		for k := range suggestCache {
+			delete(suggestCache, k)
+			break
+		}
+	}
+	suggestCache[strings.ToLower(strings.TrimSpace(q))] = res
 }

@@ -148,6 +148,9 @@ type Model struct {
 	suggestInput  int
 	lastInputVal  string
 
+	suggestFetching bool
+	suggestPending  bool
+
 	latestTag       string
 	hasUpdate       bool
 	updateChecked   bool
@@ -284,17 +287,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err.Error()
 		return m, nil
 	case tickMsg:
-		return m.fetchSuggestions()
+		return m.startSuggestionFetch()
 	case suggestMsg:
-		if msg.inputIdx == m.suggestInput && m.lastInputVal == msg.query {
-			if msg.err != nil {
-				m.err = msg.err.Error()
-			} else {
-				m.err = ""
-				m.suggestions = msg.suggests
-				m.suggestionIdx = 0
-				m.showSuggest = len(msg.suggests) > 0
-			}
+		m.suggestFetching = false
+		if msg.inputIdx == m.suggestInput && m.lastInputVal == msg.query && msg.err == nil {
+			m.suggestions = msg.suggests
+			m.suggestionIdx = 0
+			m.showSuggest = len(msg.suggests) > 0
+		}
+		if m.suggestPending {
+			m.suggestPending = false
+			return m.startSuggestionFetch()
 		}
 		return m, nil
 	case updateCheckMsg:
@@ -422,6 +425,8 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.inputs[2].CharLimit = 2
 		m.inputs[2].Width = 5
 		m.focusIdx = 0
+		m.suggestFetching = false
+		m.suggestPending = false
 		return m, textinput.Blink
 	case "2":
 		m.screen = screenSettings
@@ -759,17 +764,48 @@ func (m Model) updateUninstall(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) fetchSuggestions() (tea.Model, tea.Cmd) {
-	if m.focusIdx > 1 || len(m.inputs) < 2 {
+// startSuggestionFetch fires a single request for the current address field.
+// While one is in flight no new request is started (Nominatim allows one per
+// second); latest-typed input is picked up again when the result arrives.
+func (m Model) startSuggestionFetch() (tea.Model, tea.Cmd) {
+	if m.focusIdx > 1 || len(m.inputs) < 2 || m.suggestFetching {
 		return m, nil
 	}
-	query := m.inputs[m.focusIdx].Value()
+	q := m.inputs[m.focusIdx].Value()
+	if len(strings.TrimSpace(q)) < 2 {
+		return m, nil
+	}
+	m.suggestFetching = true
 	inputIdx := m.focusIdx
-	q := query
-
 	return m, func() tea.Msg {
 		suggests, err := routing.SuggestAddresses(q)
 		return suggestMsg{inputIdx: inputIdx, query: q, suggests: suggests, err: err}
+	}
+}
+
+// narrowSuggestions filters the last fetched results client-side while the
+// user appends to the query, so the list responds instantly without waiting
+// for the network.
+func (m Model) narrowSuggestions(prevQuery, newQuery string) {
+	if len(m.suggestions) == 0 {
+		return
+	}
+	low := strings.ToLower(strings.TrimSpace(newQuery))
+	// Only narrow on append; backtracking is handled by the exact-query
+	// cache which restores the full result set quickly.
+	if !strings.HasPrefix(low, strings.ToLower(strings.TrimSpace(prevQuery))) {
+		return
+	}
+	filtered := make([]routing.AddressSuggestion, 0, len(m.suggestions))
+	for _, s := range m.suggestions {
+		if strings.Contains(strings.ToLower(s.Display), low) {
+			filtered = append(filtered, s)
+		}
+	}
+	if len(filtered) > 0 {
+		m.suggestions = filtered
+		m.showSuggest = true
+		m.suggestionIdx = 0
 	}
 }
 
@@ -804,6 +840,8 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.inputs[m.focusIdx].Focus()
 		m.showSuggest = false
+		m.suggestFetching = false
+		m.suggestPending = false
 		return m, textinput.Blink
 	case "enter":
 		if m.showSuggest && m.suggestionIdx < len(m.suggestions) {
@@ -822,6 +860,8 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.screen = screenMain
 		m.err = ""
+		m.suggestFetching = false
+		m.suggestPending = false
 		return m, nil
 	case "tab", "shift+tab":
 		m.showSuggest = false
@@ -836,6 +876,8 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.focusIdx = (m.focusIdx - 1 + len(m.inputs)) % len(m.inputs)
 		}
 		m.inputs[m.focusIdx].Focus()
+		m.suggestFetching = false
+		m.suggestPending = false
 		return m, textinput.Blink
 	}
 
@@ -844,14 +886,24 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			oldVal := m.inputs[i].Value()
 			m.inputs[i], _ = m.inputs[i].Update(msg)
 			newVal := m.inputs[i].Value()
-			if i < 2 && newVal != oldVal && len(newVal) >= 2 {
-				m.suggestInput = i
-				m.lastInputVal = newVal
-				return m, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
-					return tickMsg(t)
-				})
-			}
 			if i < 2 && newVal != oldVal {
+				m.suggestInput = i
+				if len(newVal) >= 2 {
+					// Give instant feedback by narrowing the current list
+					// while the (rate-limited) fetch runs in the background.
+					if len(m.lastInputVal) >= 2 {
+						m.narrowSuggestions(m.lastInputVal, newVal)
+					}
+					m.lastInputVal = newVal
+					if m.suggestFetching {
+						m.suggestPending = true
+						return m, nil
+					}
+					return m, tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg {
+						return tickMsg(t)
+					})
+				}
+				m.lastInputVal = newVal
 				m.showSuggest = false
 				m.suggestions = nil
 			}
@@ -883,6 +935,8 @@ func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.inputs[2].CharLimit = 2
 		m.inputs[2].Width = 5
 		m.focusIdx = 0
+		m.suggestFetching = false
+		m.suggestPending = false
 		return m, textinput.Blink
 	}
 	return m, nil

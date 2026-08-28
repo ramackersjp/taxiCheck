@@ -6,7 +6,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 
 - Real-time route calculation via OpenStreetMap (OSRM + Nominatim)
 - Address-based fare calculation within the Netherlands
-- Live address suggestions while typing (Nominatim, 300ms debounce)
+- Live address suggestions while typing (Nominatim, rate-limited to 1 req/s, cached for the session)
 - Fastest or shortest route mode (toggle with F2)
 - Support for two passenger groups: Taxi auto (max. 4) and Taxi bus (5-8)
 - Configurable pricing: board fee, per km rate, per minute rate
