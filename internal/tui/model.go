@@ -975,14 +975,38 @@ func (m Model) fetchBranches() tea.Cmd {
 func (m Model) switchBranch(branch string) tea.Cmd {
 	return func() tea.Msg {
 		dir := gitRepoDir()
-		args := []string{"checkout", branch}
-		if dir != "" {
-			args = append([]string{"-C", dir}, args...)
+		git := func(args ...string) *exec.Cmd {
+			full := args
+			if dir != "" {
+				full = append([]string{"-C", dir}, args...)
+			}
+			return exec.Command("git", full...)
 		}
-		cmd := exec.Command("git", args...)
-		output, err := cmd.CombinedOutput()
+
+		// Stash any local changes so checkout is not blocked by them. The
+		// stash is restored after switching so no work is lost.
+		stashed := false
+		if out, err := git("status", "--porcelain").Output(); err == nil && len(strings.TrimSpace(string(out))) > 0 {
+			if _, err := git("stash", "push", "--include-untracked", "-m", "taxiprijs: branch switch stash").CombinedOutput(); err == nil {
+				stashed = true
+			}
+		}
+
+		output, err := git("checkout", branch).CombinedOutput()
 		if err != nil {
+			if stashed {
+				// The failed checkout left us on the original branch;
+				// restore the stashed changes there.
+				git("stash", "pop").Run()
+			}
 			return branchSwitchMsg{err: fmt.Errorf("%s: %s", err, string(output))}
+		}
+
+		if stashed {
+			stashOutput, stashErr := git("stash", "pop").CombinedOutput()
+			if stashErr != nil {
+				return branchSwitchMsg{err: fmt.Errorf("%s: %s", stashErr, string(stashOutput))}
+			}
 		}
 		return branchSwitchMsg{success: true, newTag: branch}
 	}
