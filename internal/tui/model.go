@@ -842,12 +842,12 @@ func (m Model) updateUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenMain
 		m.err = ""
 		return m, nil
-	case "u":
+	case "u", "U":
 		if m.hasUpdate {
 			return m.runOp(m.pullUpdate())
 		}
 		return m, nil
-	case "r":
+	case "r", "R":
 		m.updateChecked = false
 		return m.runOp(m.checkUpdate())
 	case "f3":
@@ -1930,21 +1930,23 @@ func (m Model) viewUpdate() string {
 	b.WriteString(t(m.lang, "update_current") + successStyle.Render(ver) + "\n")
 	b.WriteString("\n")
 
+	// Width 2 so "R" is the same size as "F3".
+	updKey := keyStyle.Width(2)
 	if m.updateStatus != "" {
 		if m.hasUpdate {
 			b.WriteString(t(m.lang, "update_available") + successStyle.Render(m.updateStatus) + "\n")
 			b.WriteString("\n")
-			b.WriteString(keyStyle.Render("u") + " " + t(m.lang, "update_pull") + "\n")
-			b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "update_recheck") + "\n")
+			b.WriteString(updKey.Render("U") + t(m.lang, "update_pull") + "\n")
+			b.WriteString(updKey.Render("R") + t(m.lang, "update_recheck") + "\n")
 		} else {
 			b.WriteString(successStyle.Render(m.updateStatus) + "\n")
 			b.WriteString("\n")
-			b.WriteString(keyStyle.Render("r") + " " + t(m.lang, "update_recheck") + "\n")
+			b.WriteString(updKey.Render("R") + t(m.lang, "update_recheck") + "\n")
 		}
 	}
 
 	b.WriteString("\n")
-	b.WriteString(keyStyle.Render("F3") + " " + t(m.lang, "update_reinstall") + "\n")
+	b.WriteString(updKey.Render("F3") + t(m.lang, "update_reinstall") + "\n")
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "update_help")))
 	return b.String()

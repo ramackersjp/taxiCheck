@@ -274,10 +274,16 @@ func TestF3ReinstallsWithoutPull(t *testing.T) {
 }
 
 func TestUpdateScreenShowsF3(t *testing.T) {
-	m := Model{screen: screenUpdate, lang: "en", width: 80, height: 40, updateChecked: true}
+	m := Model{screen: screenUpdate, lang: "nl", width: 80, height: 40, updateChecked: true, updateStatus: "ok"}
 	out := m.View()
 	if !strings.Contains(out, "F3") {
 		t.Fatalf("update screen must advertise F3, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Installeer nieuwste versie") {
+		t.Fatalf("F3 label must be Installeer nieuwste versie, got:\n%s", out)
+	}
+	if strings.Contains(out, "make install") || strings.Contains(out, "QML") {
+		t.Fatalf("F3 label must not include extra install details, got:\n%s", out)
 	}
 }
 
