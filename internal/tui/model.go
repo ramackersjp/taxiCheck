@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -52,19 +53,106 @@ func stableBranch(branch string) bool {
 }
 
 func DetectVersion() {
-	dir := gitRepoDir()
-	args := []string{"symbolic-ref", "--short", "HEAD"}
+	branch := currentGitBranch(gitRepoDir())
+	if stableBranch(branch) || branch == "dev" {
+		appVersion = branch
+	}
+}
+
+// currentGitBranch returns the current branch name with the refs/heads/ prefix
+// stripped. %(refname:short) / symbolic-ref --short are not used: when a tag
+// and a branch share a name (e.g. v1.0.1), git reports the short name as
+// "heads/v1.0.1", which then fails stableBranch() and local-branch matching.
+func currentGitBranch(dir string) string {
+	out, err := gitCmd(dir, "symbolic-ref", "HEAD").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "refs/heads/")
+}
+
+func gitCmd(dir string, args ...string) *exec.Cmd {
 	if dir != "" {
 		args = append([]string{"-C", dir}, args...)
 	}
-	cmd := exec.Command("git", args...)
-	output, err := cmd.Output()
-	if err == nil {
-		branch := strings.TrimSpace(string(output))
-		if stableBranch(branch) || branch == "dev" {
-			appVersion = branch
-		}
+	return exec.Command("git", args...)
+}
+
+// parseRefNames strips prefix (e.g. "refs/heads/") from for-each-ref %(refname)
+// output. HEAD and empty names are skipped.
+func parseRefNames(output, prefix string) []string {
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
 	}
+	var names []string
+	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		name := strings.TrimPrefix(line, prefix)
+		if name == "" || name == "HEAD" {
+			continue
+		}
+		names = append(names, name)
+	}
+	return names
+}
+
+func gitRefNames(dir, prefix string) []string {
+	out, err := gitCmd(dir, "for-each-ref", "--format=%(refname)", prefix).Output()
+	if err != nil {
+		return nil
+	}
+	return parseRefNames(string(out), prefix)
+}
+
+func gitRefExists(dir, ref string) bool {
+	return gitCmd(dir, "show-ref", "--verify", "--quiet", ref).Run() == nil
+}
+
+func parseSemver(s string) ([3]int, bool) {
+	var v [3]int
+	if !stableBranch(s) {
+		return v, false
+	}
+	parts := strings.Split(strings.TrimPrefix(s, "v"), ".")
+	if len(parts) != 3 {
+		return v, false
+	}
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return v, false
+		}
+		v[i] = n
+	}
+	return v, true
+}
+
+// sortSwitchableBranches puts dev first, then stable versions newest-first.
+func sortSwitchableBranches(branches []string) {
+	sort.SliceStable(branches, func(i, j int) bool {
+		a, b := branches[i], branches[j]
+		if a == "dev" {
+			return true
+		}
+		if b == "dev" {
+			return false
+		}
+		va, oka := parseSemver(a)
+		vb, okb := parseSemver(b)
+		if oka && okb {
+			if va[0] != vb[0] {
+				return va[0] > vb[0]
+			}
+			if va[1] != vb[1] {
+				return va[1] > vb[1]
+			}
+			return va[2] > vb[2]
+		}
+		return a < b
+	})
 }
 
 type routeMsg struct {
@@ -947,12 +1035,7 @@ func (m Model) checkUpdate() tea.Cmd {
 	return func() tea.Msg {
 		dir := gitRepoDir()
 
-		branch := ""
-		if dir != "" {
-			if out, err := exec.Command("git", "-C", dir, "symbolic-ref", "--short", "HEAD").Output(); err == nil {
-				branch = strings.TrimSpace(string(out))
-			}
-		}
+		branch := currentGitBranch(dir)
 
 		// Stable release branches track GitHub releases; dev (and any other
 		// branch) receives updates via the remote git branch.
@@ -1048,50 +1131,35 @@ func (m Model) pullUpdate() tea.Cmd {
 func (m Model) fetchBranches() tea.Cmd {
 	return func() tea.Msg {
 		dir := gitRepoDir()
-		args := []string{"symbolic-ref", "--short", "HEAD"}
-		if dir != "" {
-			args = append([]string{"-C", dir}, args...)
-		}
-		cmd := exec.Command("git", args...)
-		output, err := cmd.Output()
-		current := "HEAD"
-		if err == nil {
-			current = strings.TrimSpace(string(output))
+		current := currentGitBranch(dir)
+		if current == "" {
+			current = "HEAD"
 		}
 
 		// Branches that users may switch to: the `dev` branch and every stable
 		// release branch (vX.Y.Z). Feature branches are intentionally excluded.
 		branchSet := map[string]bool{"dev": true}
 
-		// Local version branches.
 		if dir != "" {
-			if out, err := exec.Command("git", "-C", dir, "for-each-ref", "--format=%(refname:short)", "refs/heads/").Output(); err == nil {
-				for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-					if b := strings.TrimSpace(line); b != "" && stableBranch(b) {
-						branchSet[b] = true
-					}
+			for _, b := range gitRefNames(dir, "refs/heads/") {
+				if stableBranch(b) {
+					branchSet[b] = true
+				}
+			}
+			// Remote version branches so users on dev can switch to an older
+			// release before it is checked out locally.
+			for _, b := range gitRefNames(dir, "refs/remotes/origin/") {
+				if stableBranch(b) {
+					branchSet[b] = true
 				}
 			}
 		}
 
-		// Make sure remote version branches also appear so users on dev can
-		// switch to an older release before it is checked out locally.
-		if dir != "" {
-			if out, err := exec.Command("git", "-C", dir, "for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/").Output(); err == nil {
-				for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-					b := strings.TrimSpace(strings.TrimPrefix(line, "origin/"))
-					if b != "" && stableBranch(b) {
-						branchSet[b] = true
-					}
-				}
-			}
-		}
-
-		// Stable branches sorted newest first, then dev first for readability.
 		branches := make([]string, 0, len(branchSet))
 		for b := range branchSet {
 			branches = append(branches, b)
 		}
+		sortSwitchableBranches(branches)
 
 		return branchResultMsg{
 			current:  current,
@@ -1122,17 +1190,9 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 		// Ensure the remote is up to date so older release branches exist.
 		git("fetch", "origin").Run()
 
-		// If the branch is not checked out locally but exists on the remote,
-		// create a local tracking branch for it.
-		hasLocal := false
-		if out, err := git("for-each-ref", "--format=%(refname:short)", "refs/heads/").Output(); err == nil {
-			for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-				if strings.TrimSpace(line) == branch {
-					hasLocal = true
-					break
-				}
-			}
-		}
+		// Use the full ref so a same-named tag (v1.0.1) cannot hide the
+		// local branch behind the ambiguous short name "heads/v1.0.1".
+		hasLocal := gitRefExists(dir, "refs/heads/"+branch)
 
 		var output []byte
 		var err error
@@ -1141,6 +1201,9 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 		} else {
 			// Track the remote branch as a new local branch.
 			output, err = git("checkout", "-b", branch, "origin/"+branch).CombinedOutput()
+			if err != nil && gitRefExists(dir, "refs/heads/"+branch) {
+				output, err = git("checkout", branch).CombinedOutput()
+			}
 		}
 		if err != nil {
 			if stashed {
