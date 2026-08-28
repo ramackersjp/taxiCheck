@@ -12,13 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/jp/taxiprijs/internal/calc"
-	"github.com/jp/taxiprijs/internal/config"
-	"github.com/jp/taxiprijs/internal/routing"
+	"github.com/ramackersjp/taxiCheck/internal/calc"
+	"github.com/ramackersjp/taxiCheck/internal/config"
+	"github.com/ramackersjp/taxiCheck/internal/issue"
+	"github.com/ramackersjp/taxiCheck/internal/routing"
 )
 
 type screen int
@@ -33,6 +35,7 @@ const (
 	screenUpdate
 	screenBranch
 	screenUninstall
+	screenReport
 )
 
 var appVersion = "dev"
@@ -114,6 +117,10 @@ type uninstallResultMsg struct {
 	err     error
 }
 
+type issueResultMsg struct {
+	res issue.Result
+}
+
 type Model struct {
 	screen    screen
 	config    *config.Config
@@ -152,6 +159,11 @@ type Model struct {
 	settingsStep    int
 	settingsLang    string
 	setupDone       bool
+	reportDesc      textinput.Model
+	reportErr       textarea.Model
+	reportFocus     int
+	reportResult    string
+	reportSubmitted bool
 }
 
 func NewModel() Model {
@@ -344,6 +356,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.uninstallStatus = t(m.lang, "uninstall_success")
 		}
 		return m, nil
+	case issueResultMsg:
+		m.loading = false
+		m.renderReportResult(msg.res)
+		return m, nil
 	}
 
 	return m, nil
@@ -373,6 +389,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateBranch(msg)
 	case screenUninstall:
 		return m.updateUninstall(msg)
+	case screenReport:
+		return m.updateReport(msg)
 	}
 	return m, nil
 }
@@ -438,6 +456,13 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.uninstallStatus = ""
 		m.err = ""
 		return m, nil
+	case "8":
+		m.screen = screenReport
+		m.reportResult = ""
+		m.reportSubmitted = false
+		m.err = ""
+		m.initReportInputs()
+		return m, textinput.Blink
 	}
 	return m, nil
 }
@@ -910,7 +935,7 @@ func gitCheckUpdate(dir, branch string) updateCheckMsg {
 // release, used for stable release branches.
 func releaseCheckUpdate(currentVer string) updateCheckMsg {
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get("https://api.github.com/repos/ramackersjp/taxiprijs/releases/latest")
+	resp, err := client.Get("https://api.github.com/repos/ramackersjp/taxiCheck/releases/latest")
 	if err != nil {
 		return updateCheckMsg{err: err}
 	}
@@ -963,7 +988,39 @@ func (m Model) fetchBranches() tea.Cmd {
 			current = strings.TrimSpace(string(output))
 		}
 
-		branches := []string{"dev", "v1.0.1"}
+		// Branches that users may switch to: the `dev` branch and every stable
+		// release branch (vX.Y.Z). Feature branches are intentionally excluded.
+		branchSet := map[string]bool{"dev": true}
+
+		// Local version branches.
+		if dir != "" {
+			if out, err := exec.Command("git", "-C", dir, "for-each-ref", "--format=%(refname:short)", "refs/heads/").Output(); err == nil {
+				for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+					if b := strings.TrimSpace(line); b != "" && stableBranch(b) {
+						branchSet[b] = true
+					}
+				}
+			}
+		}
+
+		// Make sure remote version branches also appear so users on dev can
+		// switch to an older release before it is checked out locally.
+		if dir != "" {
+			if out, err := exec.Command("git", "-C", dir, "for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/").Output(); err == nil {
+				for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+					b := strings.TrimSpace(strings.TrimPrefix(line, "origin/"))
+					if b != "" && stableBranch(b) {
+						branchSet[b] = true
+					}
+				}
+			}
+		}
+
+		// Stable branches sorted newest first, then dev first for readability.
+		branches := make([]string, 0, len(branchSet))
+		for b := range branchSet {
+			branches = append(branches, b)
+		}
 
 		return branchResultMsg{
 			current:  current,
@@ -975,12 +1032,11 @@ func (m Model) fetchBranches() tea.Cmd {
 func (m Model) switchBranch(branch string) tea.Cmd {
 	return func() tea.Msg {
 		dir := gitRepoDir()
+		if dir == "" {
+			return branchSwitchMsg{err: fmt.Errorf("not a git repository")}
+		}
 		git := func(args ...string) *exec.Cmd {
-			full := args
-			if dir != "" {
-				full = append([]string{"-C", dir}, args...)
-			}
-			return exec.Command("git", full...)
+			return exec.Command("git", append([]string{"-C", dir}, args...)...)
 		}
 
 		// Stash any local changes so checkout is not blocked by them. The
@@ -992,7 +1048,29 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 			}
 		}
 
-		output, err := git("checkout", branch).CombinedOutput()
+		// Ensure the remote is up to date so older release branches exist.
+		git("fetch", "origin").Run()
+
+		// If the branch is not checked out locally but exists on the remote,
+		// create a local tracking branch for it.
+		hasLocal := false
+		if out, err := git("for-each-ref", "--format=%(refname:short)", "refs/heads/").Output(); err == nil {
+			for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+				if strings.TrimSpace(line) == branch {
+					hasLocal = true
+					break
+				}
+			}
+		}
+
+		var output []byte
+		var err error
+		if hasLocal {
+			output, err = git("checkout", branch).CombinedOutput()
+		} else {
+			// Track the remote branch as a new local branch.
+			output, err = git("checkout", "-b", branch, "origin/"+branch).CombinedOutput()
+		}
 		if err != nil {
 			if stashed {
 				// The failed checkout left us on the original branch;
@@ -1020,6 +1098,108 @@ func (m Model) runUninstall() tea.Cmd {
 			return uninstallResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
 		}
 		return uninstallResultMsg{success: true}
+	}
+}
+
+func (m Model) initReportInputs() {
+	iw := m.inputWidth()
+	m.reportDesc = textinput.New()
+	m.reportDesc.Placeholder = t(m.lang, "report_desc_ph")
+	m.reportDesc.CharLimit = 200
+	m.reportDesc.Width = iw
+	m.reportDesc.Focus()
+
+	m.reportErr = textarea.New()
+	m.reportErr.Placeholder = t(m.lang, "report_err_ph")
+	m.reportErr.CharLimit = 8000
+	m.reportErr.SetWidth(iw)
+	h := m.height - 22
+	if h < 4 {
+		h = 4
+	}
+	if h > 12 {
+		h = 12
+	}
+	m.reportErr.SetHeight(h)
+	m.reportErr.ShowLineNumbers = false
+	m.reportFocus = 0
+}
+
+func (m Model) updateReport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "q", "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		if m.reportSubmitted {
+			m.reportSubmitted = false
+			m.reportResult = ""
+			m.screen = screenMain
+			return m, nil
+		}
+		m.screen = screenMain
+		m.err = ""
+		return m, nil
+	case "tab", "shift+tab":
+		if msg.String() == "tab" {
+			m.reportFocus = (m.reportFocus + 1) % 2
+		} else {
+			m.reportFocus = (m.reportFocus - 1 + 2) % 2
+		}
+		if m.reportFocus == 0 {
+			m.reportDesc.Focus()
+			m.reportErr.Blur()
+		} else {
+			m.reportErr.Focus()
+			m.reportDesc.Blur()
+		}
+		return m, textinput.Blink
+	case "enter":
+		if m.reportSubmitted {
+			m.reportSubmitted = false
+			m.reportResult = ""
+			m.screen = screenMain
+			return m, nil
+		}
+		description := strings.TrimSpace(m.reportDesc.Value())
+		if description == "" && strings.TrimSpace(m.reportErr.Value()) == "" {
+			m.err = t(m.lang, "report_empty")
+			return m, nil
+		}
+		m.err = ""
+		m.loading = true
+		desc := description
+		errd := strings.TrimSpace(m.reportErr.Value())
+		return m, m.submitIssue(desc, errd)
+	}
+
+	if m.reportFocus == 0 {
+		m.reportDesc, _ = m.reportDesc.Update(msg)
+		return m, textinput.Blink
+	}
+	m.reportErr, _ = m.reportErr.Update(msg)
+	return m, nil
+}
+
+func (m Model) submitIssue(description, errorOutput string) tea.Cmd {
+	return func() tea.Msg {
+		return issueResultMsg{res: issue.Report(description, errorOutput)}
+	}
+}
+
+func (m *Model) renderReportResult(res issue.Result) {
+	m.reportSubmitted = true
+	m.reportResult = ""
+	m.err = ""
+	switch {
+	case res.IssueNumber > 0:
+		m.reportResult = fmt.Sprintf("#%d", res.IssueNumber)
+	case res.IssueURL != "":
+		m.reportResult = res.IssueURL
+	default:
+		m.reportResult = t(m.lang, "report_local_only")
+		if res.SkipReason != "" {
+			m.reportResult += "\n" + res.SkipReason
+		}
 	}
 }
 
@@ -1236,6 +1416,8 @@ func (m Model) View() string {
 		b.WriteString(m.viewBranch())
 	case screenUninstall:
 		b.WriteString(m.viewUninstall())
+	case screenReport:
+		b.WriteString(m.viewReport())
 	}
 
 	if m.loading {
@@ -1277,6 +1459,7 @@ func (m Model) viewMain() string {
 	b.WriteString(keyStyle.Render("5") + t(m.lang, "main_update") + "\n")
 	b.WriteString(keyStyle.Render("6") + t(m.lang, "main_branch") + "\n")
 	b.WriteString(keyStyle.Render("7") + t(m.lang, "main_uninstall") + "\n")
+	b.WriteString(keyStyle.Render("8") + t(m.lang, "main_report") + "\n")
 	b.WriteString(keyStyle.Render("q") + t(m.lang, "main_quit") + "\n")
 
 	if m.branchStatus != "" {
@@ -1395,6 +1578,7 @@ func (m Model) viewHelp() string {
 	b.WriteString("  " + keyStyle.Render("5") + t(m.lang, "help_update") + "\n")
 	b.WriteString("  " + keyStyle.Render("6") + t(m.lang, "help_branch") + "\n")
 	b.WriteString("  " + keyStyle.Render("7") + t(m.lang, "help_uninstall") + "\n")
+	b.WriteString("  " + keyStyle.Render("8") + t(m.lang, "help_report") + "\n")
 	b.WriteString("  " + keyStyle.Render("q") + t(m.lang, "help_quit") + "\n")
 	b.WriteString("  " + keyStyle.Render("Tab") + t(m.lang, "help_tab") + "\n")
 	b.WriteString("  " + keyStyle.Render("Enter") + t(m.lang, "help_enter") + "\n")
@@ -1585,5 +1769,41 @@ func (m Model) viewUninstall() string {
 
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "uninstall_help")))
+	return b.String()
+}
+
+func (m Model) viewReport() string {
+	var b strings.Builder
+	b.WriteString(subtitleStyle.Render(t(m.lang, "report_title")))
+	b.WriteString("\n\n")
+
+	if m.reportSubmitted {
+		if strings.HasPrefix(m.reportResult, "#") || strings.HasPrefix(m.reportResult, "http") {
+			b.WriteString(successStyle.Render(t(m.lang, "report_created")))
+			b.WriteString("\n\n")
+			b.WriteString(keyStyle.Render("Issue") + " " + successStyle.Render(m.reportResult) + "\n")
+			if strings.HasPrefix(m.reportResult, "#") {
+				b.WriteString("\n")
+				b.WriteString(helpStyle.Render(t(m.lang, "report_issue_number_hint")))
+			}
+		} else {
+			b.WriteString(successStyle.Render(m.reportResult))
+		}
+		b.WriteString("\n\n")
+		b.WriteString(helpStyle.Render(t(m.lang, "report_done_help")))
+		return b.String()
+	}
+
+	b.WriteString(titleStyle.Render(t(m.lang, "report_desc_label")))
+	b.WriteString("\n")
+	b.WriteString(m.reportDesc.View())
+	b.WriteString("\n\n")
+
+	b.WriteString(titleStyle.Render(t(m.lang, "report_err_label")))
+	b.WriteString("\n")
+	b.WriteString(m.reportErr.View())
+	b.WriteString("\n")
+
+	b.WriteString(helpStyle.Render(t(m.lang, "report_help")))
 	return b.String()
 }

@@ -1,4 +1,4 @@
-module github.com/jp/taxiprijs
+module github.com/ramackersjp/taxiCheck
 
 go 1.27.0
 
