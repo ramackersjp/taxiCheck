@@ -45,12 +45,26 @@ func SetVersion(v string) {
 }
 
 // stableBranchRe matches semantic-versioned stable release branches (e.g.
-// v1.0.0, v1.0.1). Keeping this generic means bumping the release requires no
+// v1.1.0). Keeping this generic means bumping the release requires no
 // code changes; only the version string in the build config.
 var stableBranchRe = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
 
 func stableBranch(branch string) bool {
 	return stableBranchRe.MatchString(branch)
+}
+
+// retiredStable are old release branches that must not appear in Switch
+// Branch and cannot be selected. Newer vX.Y.Z releases stay available.
+var retiredStable = map[string]bool{
+	"v1.0.0": true,
+	"v1.0.1": true,
+}
+
+func switchableBranch(branch string) bool {
+	if branch == "dev" {
+		return true
+	}
+	return stableBranch(branch) && !retiredStable[branch]
 }
 
 func DetectVersion() {
@@ -1230,14 +1244,14 @@ func (m Model) fetchBranches() tea.Cmd {
 
 		if dir != "" {
 			for _, b := range gitRefNames(dir, "refs/heads/") {
-				if stableBranch(b) {
+				if switchableBranch(b) {
 					branchSet[b] = true
 				}
 			}
-			// Remote version branches so users on dev can switch to an older
+			// Remote version branches so users on dev can switch to a
 			// release before it is checked out locally.
 			for _, b := range gitRefNames(dir, "refs/remotes/origin/") {
-				if stableBranch(b) {
+				if switchableBranch(b) {
 					branchSet[b] = true
 				}
 			}
@@ -1261,6 +1275,9 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 		dir := gitRepoDir()
 		if dir == "" {
 			return branchSwitchMsg{err: fmt.Errorf("not a git repository")}
+		}
+		if retiredStable[branch] {
+			return branchSwitchMsg{err: fmt.Errorf("%s is no longer available", branch)}
 		}
 		git := func(args ...string) *exec.Cmd {
 			cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
@@ -1305,7 +1322,7 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 		}
 
 		// Rebuild from the clean checkout before restoring the stash, so the
-		// installed binary is this branch (dev / v1.0.0 / v1.0.1), not a mix
+		// installed binary is this branch (dev / v1.1.0 / later), not a mix
 		// of leftover uncommitted files from the previous one. No `make
 		// install`: that would sudo-prompt on older release Makefiles.
 		built, rebuildErr, installErr := applyBranchBinary(dir)

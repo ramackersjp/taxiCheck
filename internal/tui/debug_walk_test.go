@@ -97,7 +97,7 @@ func TestBranchListKeepsMarkerOnSameLine(t *testing.T) {
 	m := sizedModel("nl")
 	m.screen = screenBranch
 	m.currentBranch = "dev"
-	m.branchList = []string{"dev", "v1.0.1", "v1.0.0"}
+	m.branchList = []string{"dev", "v1.1.0", "v1.2.0"}
 	m.branchIdx = 1
 	out := m.View()
 	if !strings.Contains(out, "*") {
