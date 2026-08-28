@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"sort"
@@ -1262,7 +1263,9 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 			return branchSwitchMsg{err: fmt.Errorf("not a git repository")}
 		}
 		git := func(args ...string) *exec.Cmd {
-			return exec.Command("git", append([]string{"-C", dir}, args...)...)
+			cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+			cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=true")
+			return cmd
 		}
 
 		// Stash any local changes so checkout is not blocked by them. The
@@ -1303,8 +1306,10 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 
 		// Rebuild from the clean checkout before restoring the stash, so the
 		// installed binary is this branch (dev / v1.0.0 / v1.0.1), not a mix
-		// of leftover uncommitted files from the previous one.
-		built, rebuildErr, installErr := applyNewBinary(dir)
+		// of leftover uncommitted files from the previous one. No `make
+		// install`: that would sudo-prompt on older release Makefiles.
+		built, rebuildErr, installErr := applyBranchBinary(dir)
+		ensureRebuildHook(dir)
 
 		if stashed {
 			// Best-effort: a stash conflict must not hide a successful switch
@@ -1827,6 +1832,13 @@ func (m Model) viewHelp() string {
 	b.WriteString(t(m.lang, "help_pricing_board") + "\n")
 	b.WriteString(t(m.lang, "help_pricing_km") + "\n")
 	b.WriteString(t(m.lang, "help_pricing_time") + "\n")
+	b.WriteString("\n")
+	b.WriteString(t(m.lang, "help_update_howto_title") + "\n")
+	b.WriteString(t(m.lang, "help_update_howto_1") + "\n")
+	b.WriteString(t(m.lang, "help_update_howto_2") + "\n")
+	b.WriteString(t(m.lang, "help_update_howto_3") + "\n")
+	b.WriteString("\n")
+	b.WriteString(t(m.lang, "help_branch_howto") + "\n")
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "help_return")))
 	return b.String()

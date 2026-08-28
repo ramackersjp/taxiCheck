@@ -30,6 +30,7 @@ func gitRepoDir() string {
 	dir := locateGitRepo()
 	if dir != "" {
 		rememberRepoDir(dir)
+		ensureRebuildHook(dir)
 		return dir
 	}
 	return ""
@@ -168,12 +169,69 @@ func applyNewBinaryImpl(dir string) (builtPath string, rebuildErr, installErr er
 	if err := runMakeInstall(dir); err != nil {
 		// `make install` copies the Omarchy QML plugin and (when sudo -n
 		// works) the system binary. If make is missing, still copy QML.
-		if qerr := installOmarchyPlugin(dir); qerr != nil {
+		if qerr := copyOmarchyPlugin(dir, true); qerr != nil {
 			return built, nil, err
 		}
 		return built, nil, nil
 	}
 	return built, nil, nil
+}
+
+// applyBranchBinary rebuilds and installs without `make install`, so switching
+// branches never prompts for a sudo password (old release Makefiles run
+// `sudo install` interactively). Overridable in tests.
+var applyBranchBinary = applyBranchBinaryImpl
+
+func applyBranchBinaryImpl(dir string) (builtPath string, rebuildErr, installErr error) {
+	built, err := rebuildBinary(dir)
+	if err != nil {
+		return "", err, nil
+	}
+	_ = installBinary(built, dir)
+	_ = copyOmarchyPlugin(dir, false)
+	return built, nil, nil
+}
+
+const rebuildHookMarker = "taxiprijs-rebuild-hook"
+
+// ensureRebuildHook installs a post-checkout hook so even an older TUI
+// (v1.0.0) that only runs git checkout still rebuilds the user binary
+// after switching back to dev.
+func ensureRebuildHook(repo string) {
+	if repo == "" {
+		return
+	}
+	hookDir := filepath.Join(repo, ".git", "hooks")
+	if err := os.MkdirAll(hookDir, 0755); err != nil {
+		return
+	}
+	body := `#!/bin/sh
+# ` + rebuildHookMarker + `
+# Rebuild the user binary after a branch checkout so switching back to
+# dev actually runs the dev menu (old app versions do not relaunch).
+if [ "$3" != "1" ]; then
+  exit 0
+fi
+repo=$(git rev-parse --show-toplevel) || exit 0
+cd "$repo" || exit 0
+if [ ! -d cmd/taxiprijs ]; then
+  exit 0
+fi
+go=go
+command -v go >/dev/null 2>&1 || go=/usr/bin/go
+"$go" build -o .taxiprijs.new ./cmd/taxiprijs || exit 0
+chmod +x .taxiprijs.new
+mv -f .taxiprijs.new taxiprijs
+if [ -n "$HOME" ]; then
+  mkdir -p "$HOME/.local/bin"
+  cp taxiprijs "$HOME/.local/bin/taxiprijs" 2>/dev/null || true
+fi
+`
+	path := filepath.Join(hookDir, "post-checkout")
+	if data, err := os.ReadFile(path); err == nil && !strings.Contains(string(data), rebuildHookMarker) {
+		return
+	}
+	_ = os.WriteFile(path, []byte(body), 0755)
 }
 
 func runMakeInstallImpl(dir string) error {
@@ -191,6 +249,10 @@ func runMakeInstallImpl(dir string) error {
 }
 
 func installOmarchyPlugin(dir string) error {
+	return copyOmarchyPlugin(dir, true)
+}
+
+func copyOmarchyPlugin(dir string, restart bool) error {
 	home, err := osUserHome()
 	if err != nil || home == "" {
 		return nil
@@ -212,7 +274,9 @@ func installOmarchyPlugin(dir string) error {
 			return err
 		}
 	}
-	restartOmarchyShell()
+	if restart {
+		restartOmarchyShell()
+	}
 	return nil
 }
 

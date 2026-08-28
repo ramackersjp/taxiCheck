@@ -85,6 +85,11 @@ func TestWalkAllScreensDoNotPanic(t *testing.T) {
 		if !strings.Contains(out, s.want) {
 			t.Fatalf("after %q, view missing %q\n%s", s.key, s.want, out)
 		}
+		if s.key == "3" {
+			if !strings.Contains(out, "druk U om te pullen") || !strings.Contains(out, "F3") {
+				t.Fatalf("help must explain pull then F3, got:\n%s", out)
+			}
+		}
 	}
 }
 

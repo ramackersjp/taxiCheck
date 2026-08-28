@@ -279,8 +279,8 @@ func TestUpdateScreenShowsF3(t *testing.T) {
 	if !strings.Contains(out, "F3") {
 		t.Fatalf("update screen must advertise F3, got:\n%s", out)
 	}
-	if !strings.Contains(out, "Installeer nieuwste versie") {
-		t.Fatalf("F3 label must be Installeer nieuwste versie, got:\n%s", out)
+	if !strings.Contains(out, "Installeer nieuwste versie (eerst pull)") {
+		t.Fatalf("F3 label must say pull first, got:\n%s", out)
 	}
 	if strings.Contains(out, "make install") || strings.Contains(out, "QML") {
 		t.Fatalf("F3 label must not include extra install details, got:\n%s", out)
