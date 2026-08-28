@@ -3,6 +3,7 @@ package tui
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -96,8 +97,13 @@ type updateCheckMsg struct {
 }
 
 type updateResultMsg struct {
-	success bool
-	err     error
+	success         bool
+	err             error
+	rebuilt         string
+	rebuildErr      error
+	installed       []string
+	installErr      error
+	installFallback bool
 }
 
 type branchResultMsg struct {
@@ -317,6 +323,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.updateStatus = t(m.lang, "update_success")
 			m.hasUpdate = false
+			if msg.rebuilt != "" {
+				m.updateStatus += "\n" + t(m.lang, "update_rebuilt")
+			}
+			if msg.rebuildErr != nil {
+				m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_rebuild_fail"), msg.rebuildErr)
+			}
+			if msg.installErr != nil {
+				m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_install_fail"), msg.installErr)
+			} else if len(msg.installed) > 0 {
+				if msg.installFallback {
+					m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_install_fallback"), strings.Join(msg.installed, ", "))
+				} else {
+					m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_installed"), strings.Join(msg.installed, ", "))
+				}
+			}
 		}
 		return m, nil
 	case branchResultMsg:
@@ -970,8 +991,88 @@ func (m Model) pullUpdate() tea.Cmd {
 		if err != nil {
 			return updateResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
 		}
-		return updateResultMsg{success: true}
+
+		// A git pull only updates the source; rebuild the binary and install
+		// it so the user actually runs the new version after the update.
+		msg := updateResultMsg{success: true}
+		if dir != "" {
+			builtPath, buildErr := rebuildBinary(dir)
+			if buildErr != nil {
+				msg.rebuildErr = buildErr
+			} else {
+				msg.rebuilt = builtPath
+				installed, fallback, installErr := installBinary(builtPath, dir)
+				if installErr != nil {
+					msg.installErr = installErr
+				} else {
+					msg.installed = installed
+					msg.installFallback = fallback
+				}
+			}
+		}
+		return msg
 	}
+}
+
+// rebuildBinary runs `go build` inside the repository so the pulled source is
+// compiled into the checkout's taxiprijs binary.
+func rebuildBinary(dir string) (string, error) {
+	build := exec.Command("go", "build", "-o", "taxiprijs", "./cmd/taxiprijs")
+	build.Dir = dir
+	if out, err := build.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("%s: %s", err, strings.TrimSpace(string(out)))
+	}
+	return filepath.Join(dir, "taxiprijs"), nil
+}
+
+// installBinary places the freshly built binary where the user runs the app
+// from. When the app was started from an installed location (e.g.
+// /usr/local/bin) it mirrors `make install` via sudo; if elevated privileges
+// are unavailable it falls back to a user-local install in ~/.local/bin so an
+// update always deploys a new binary.
+func installBinary(builtPath, repoDir string) (installed []string, fallback bool, err error) {
+	runsInstalledCopy := true
+	if exe, exeErr := os.Executable(); exeErr == nil {
+		if resolved, resErr := filepath.EvalSymlinks(exe); resErr == nil {
+			runsInstalledCopy = filepath.Clean(repoDir) != filepath.Dir(resolved)
+		}
+	}
+	if runsInstalledCopy {
+		if sysErr := exec.Command("sudo", "install", "-Dm755", builtPath, "/usr/local/bin/taxiprijs").Run(); sysErr == nil {
+			return []string{"/usr/local/bin/taxiprijs"}, false, nil
+		}
+	}
+
+	home, herr := os.UserHomeDir()
+	if herr != nil {
+		return nil, true, fmt.Errorf("could not determine home directory: %s", herr)
+	}
+	localBin := filepath.Join(home, ".local", "bin", "taxiprijs")
+	if err := os.MkdirAll(filepath.Dir(localBin), 0755); err != nil {
+		return nil, true, err
+	}
+	if err := copyFile(builtPath, localBin); err != nil {
+		return nil, true, err
+	}
+	return []string{localBin}, true, nil
+}
+
+// copyFile copies src to dst and makes dst executable.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Chmod(0755)
 }
 
 func (m Model) fetchBranches() tea.Cmd {
