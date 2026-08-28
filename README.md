@@ -17,7 +17,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Unicode block art taxi logo
 - Version display in main menu
 - Check for updates from GitHub
-- Pull updates directly from the TUI (the app is rebuilt and installed automatically)
+- Pull updates directly from the TUI (the app is rebuilt and the new binary is installed automatically)
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
 - Omarchy Quattro bar widget that launches the app from the desktop bar
@@ -128,7 +128,7 @@ On first launch, the application will perform initial setup:
 
 1. Press **5** from the main menu
 2. On a stable release branch, the app compares the running version against the latest GitHub release. On `dev`, it fetches the remote and reports how many commits the local branch is behind
-3. If an update is available, press **u** to pull it via `git pull`; the app is rebuilt and installed automatically, so the next launch runs the new version
+3. If an update is available, press **u** to pull it via `git pull`; the app is rebuilt and the new binary is installed automatically (restart the app to run it)
 4. Press **r** to re-check
 
 ### Switching Branches
@@ -444,6 +444,7 @@ If you installed manually (not via `make install`), remove the files yourself:
 ```bash
 # Remove binary (if installed by 'make install')
 sudo rm -f /usr/local/bin/taxiprijs
+rm -f ~/.local/bin/taxiprijs
 
 # Remove desktop entry (if installed by 'make install')
 sudo rm -f /usr/share/applications/taxiprijs.desktop

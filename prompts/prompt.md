@@ -33,6 +33,7 @@ taxiprijs/
 │   ├── routing/routing.go         # OSRM + PDOK + Nominatim API client
 │   └── tui/                       # Bubble Tea TUI
 │       ├── model.go               # Main model with all screens
+│       ├── update.go              # In-app git pull, rebuild, and binary install
 │       ├── style.go               # Lip Gloss styling
 │       ├── lang.go                # EN/NL translations
 │       └── logo.go                # ASCII taxi logo (Unicode block art)
@@ -192,7 +193,9 @@ taxiprijs/
 - Address suggestions while typing (PDOK Locatieserver, cached for the session, silent on failure)
 - Version display in main menu
 - Check for updates from GitHub
-- Pull updates via git pull from the TUI (the binary is rebuilt and installed automatically)
+- Pull updates via git pull from the TUI; the binary is rebuilt and installed automatically
+  (checkout, ~/.local/bin, and /usr/local/bin when writable). The source repo is found from
+  cwd, the running binary, git rev-parse, or ~/.taxiprijs/source-repo.
 - Switch between dev and stable branches from the TUI (including older releases like v1.0.0)
 - Local changes stashed and restored automatically on branch switch
 - Two-step uninstall confirmation from the main menu

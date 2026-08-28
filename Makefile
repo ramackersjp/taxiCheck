@@ -29,6 +29,9 @@ build-all: build-linux build-macos build-windows
 install: build
 	sudo install -Dm755 $(APP_NAME) /usr/local/bin/$(APP_NAME)
 	sudo install -Dm644 extras/$(APP_NAME).desktop /usr/share/applications/$(APP_NAME).desktop
+	@mkdir -p $$HOME/.local/bin $$HOME/.taxiprijs
+	@cp $(APP_NAME) $$HOME/.local/bin/$(APP_NAME)
+	@pwd > $$HOME/.taxiprijs/source-repo
 	@mkdir -p $$HOME/.config/omarchy/plugins/jp.taxiprijs
 	@cp extras/omarchy-plugin/* $$HOME/.config/omarchy/plugins/jp.taxiprijs/
 	@if [ -f "$$HOME/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \
@@ -43,6 +46,7 @@ uninstall:
 	sudo rm -f /usr/local/bin/$(APP_NAME)
 	sudo rm -f /usr/share/applications/$(APP_NAME).desktop
 	sudo rm -f /usr/local/share/man/man1/$(APP_NAME).1
+	rm -f $$HOME/.local/bin/$(APP_NAME)
 	rm -rf $$HOME/.$(APP_NAME)
 	rm -rf $$HOME/.config/omarchy/plugins/jp.taxiprijs
 	@if [ -f "$$HOME/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \

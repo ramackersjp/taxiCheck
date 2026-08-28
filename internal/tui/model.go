@@ -3,11 +3,8 @@ package tui
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -103,6 +100,7 @@ type updateResultMsg struct {
 	success    bool
 	err        error
 	rebuildErr error
+	installErr error
 }
 
 type branchResultMsg struct {
@@ -236,25 +234,6 @@ func (m Model) priceInputWidth() int {
 	return w
 }
 
-func gitRepoDir() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return ""
-	}
-	dir := filepath.Dir(exe)
-	for {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	return ""
-}
-
 func (m Model) contentWidth() int {
 	w := m.width - 6
 	if w < 30 {
@@ -331,6 +310,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.hasUpdate = false
 			if msg.rebuildErr != nil {
 				m.updateStatus += "\n" + t(m.lang, "update_rebuild_fail")
+			} else if msg.installErr != nil {
+				m.updateStatus += "\n" + t(m.lang, "update_install_fail")
 			}
 		}
 		return m, nil
@@ -1037,91 +1018,31 @@ func releaseCheckUpdate(currentVer string) updateCheckMsg {
 }
 
 func (m Model) pullUpdate() tea.Cmd {
+	lang := m.lang
 	return func() tea.Msg {
 		dir := gitRepoDir()
-		args := []string{"pull"}
-		if dir != "" {
-			args = append([]string{"-C", dir}, args...)
+		if dir == "" {
+			return updateResultMsg{err: fmt.Errorf("%s", t(lang, "update_no_repo"))}
 		}
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", "-C", dir, "pull")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return updateResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
 		}
 
-		// A git pull only updates the source; rebuild the binary and install
-		// it so the user actually runs the new version after the update.
+		// A git pull only updates the source; rebuild and install the binary
+		// so the next launch actually runs the new version.
 		msg := updateResultMsg{success: true}
-		if dir != "" {
-			if _, buildErr := rebuildBinary(dir); buildErr != nil {
-				msg.rebuildErr = buildErr
-			} else {
-				_, _, _ = installBinary(filepath.Join(dir, "taxiprijs"), dir)
-			}
+		builtPath, buildErr := rebuildBinary(dir)
+		if buildErr != nil {
+			msg.rebuildErr = buildErr
+			return msg
+		}
+		if installErr := installBinary(builtPath, dir); installErr != nil {
+			msg.installErr = installErr
 		}
 		return msg
 	}
-}
-
-// rebuildBinary runs `go build` inside the repository so the pulled source is
-// compiled into the checkout's taxiprijs binary.
-func rebuildBinary(dir string) (string, error) {
-	build := exec.Command("go", "build", "-o", "taxiprijs", "./cmd/taxiprijs")
-	build.Dir = dir
-	if out, err := build.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%s: %s", err, strings.TrimSpace(string(out)))
-	}
-	return filepath.Join(dir, "taxiprijs"), nil
-}
-
-// installBinary places the freshly built binary where the user runs the app
-// from. When the app was started from an installed location (e.g.
-// /usr/local/bin) it mirrors `make install` via sudo; if elevated privileges
-// are unavailable it falls back to a user-local install in ~/.local/bin so an
-// update always deploys a new binary.
-func installBinary(builtPath, repoDir string) (installed []string, fallback bool, err error) {
-	runsInstalledCopy := true
-	if exe, exeErr := os.Executable(); exeErr == nil {
-		if resolved, resErr := filepath.EvalSymlinks(exe); resErr == nil {
-			runsInstalledCopy = filepath.Clean(repoDir) != filepath.Dir(resolved)
-		}
-	}
-	if runsInstalledCopy {
-		if sysErr := exec.Command("sudo", "install", "-Dm755", builtPath, "/usr/local/bin/taxiprijs").Run(); sysErr == nil {
-			return []string{"/usr/local/bin/taxiprijs"}, false, nil
-		}
-	}
-
-	home, herr := os.UserHomeDir()
-	if herr != nil {
-		return nil, true, fmt.Errorf("could not determine home directory: %s", herr)
-	}
-	localBin := filepath.Join(home, ".local", "bin", "taxiprijs")
-	if err := os.MkdirAll(filepath.Dir(localBin), 0755); err != nil {
-		return nil, true, err
-	}
-	if err := copyFile(builtPath, localBin); err != nil {
-		return nil, true, err
-	}
-	return []string{localBin}, true, nil
-}
-
-// copyFile copies src to dst and makes dst executable.
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	if _, err := io.Copy(out, in); err != nil {
-		return err
-	}
-	return out.Chmod(0755)
 }
 
 func (m Model) fetchBranches() tea.Cmd {
