@@ -6,8 +6,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/jp/taxiprijs/internal/routing"
-	"github.com/jp/taxiprijs/internal/tui"
+	"github.com/ramackersjp/taxiCheck/internal/routing"
+	"github.com/ramackersjp/taxiCheck/internal/tui"
 )
 
 func main() {

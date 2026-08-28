@@ -18,6 +18,8 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Pull updates directly from the TUI
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
+- Report an issue from the TUI (menu option 8) with a description and error output,
+  saved to a local log and optionally filed on GitHub via the `gh` CLI
 
 ## Installation
 
@@ -26,7 +28,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 For a normal install you get the **latest stable release** by explicitly checking out the stable branch after cloning (the repo's default branch is `dev` for development, and is intentionally not what you want for a production install).
 
 ```bash
-git clone https://github.com/jp/taxiprijs.git
+git clone https://github.com/ramackersjp/taxiCheck.git
 cd taxiprijs
 git checkout v1.0.1   # latest stable release
 cp .env.example .env
@@ -80,6 +82,7 @@ On first launch, the application will perform initial setup:
 - **5** - Check for Updates
 - **6** - Switch Branch
 - **7** - Uninstall
+- **8** - Report Issue
 - **q** - Quit
 
 ### Calculating a Fare
@@ -102,9 +105,35 @@ On first launch, the application will perform initial setup:
 1. Press **6** from the main menu
 2. Use ↑/↓ to select a branch
 3. Press **Space** to switch to the selected branch
-4. Available branches: `dev` and stable release branches (e.g. `v1.0.1`)
+4. Available branches: `dev` and all stable release branches (e.g. `v1.0.0`, `v1.0.1`)
+
+You can switch to **any previous stable release** (for example `v1.0.0`) and back to
+`dev` at any time. Feature branches are intentionally not listed. If a release branch
+is not yet checked out locally, the app creates it automatically from the remote.
 
 > **Note:** The `dev` branch may be chaotic and unstable. Use the stable release branch for production use.
+
+### Reporting Issues
+
+1. Press **8** from the main menu
+2. Describe the problem (what happened, what you expected)
+3. Paste the error output into the **Error output** field (essential for debugging across distros/OSes)
+4. Press **Enter** to submit
+
+What happens on submit:
+
+- The report is **always saved to a local log** at `~/.taxiprijs/logs/issue-<timestamp>.md` — even if GitHub or the `gh` CLI is unavailable, so nothing is ever lost.
+- The log includes your description, error output, and collected system info (OS, distro/arch, kernel, Go version) to help debug on different distros and operating systems.
+- If the **GitHub CLI (`gh`)** is installed **and** the repo has a GitHub remote, a GitHub issue is created automatically and you get its **issue number**.
+
+That issue number can then be referenced in the fix PR (see [Git Workflow](#git-workflow) and
+[prompts/push_prompt.md](prompts/push_prompt.md)) — for example `resolves #12`.
+
+The app keeps working normally even if `gh` is not installed or there is no GitHub
+remote: the issue is simply saved locally.
+
+> **Tip for backend debugging:** have the reporter fill in the **error output** field.
+> The collected system info makes it easy to reproduce on the same distro/OS.
 
 ### Uninstalling
 
@@ -119,7 +148,7 @@ On first launch, the application will perform initial setup:
 
 | Key | Action |
 |-----|--------|
-| 1-7 | Select menu option |
+| 1-8 | Select menu option |
 | Tab | Next input field |
 | Shift+Tab | Previous input field |
 | Enter | Submit/Save |
@@ -243,6 +272,8 @@ taxiprijs/
 │   ├── config/
 │   │   ├── config.go            # TOML configuration
 │   │   └── config_test.go       # Unit tests
+│   ├── issue/
+│   │   └── issue.go             # Report issue: local log + GitHub via gh CLI
 │   ├── routing/
 │   │   └── routing.go           # OSRM + Nominatim API client
 │   └── tui/
@@ -250,6 +281,10 @@ taxiprijs/
 │       ├── style.go             # Lip Gloss styling
 │       ├── lang.go              # EN/NL translations
 │       └── logo.go              # Unicode block art taxi logo
+├── prompts/
+│   ├── prompt.md                # Project knowledge
+│   ├── push_prompt.md           # Git workflow (branch/commit/push)
+│   └── issue_prompt.md          # Issue/prompt debugging workflow
 ├── .env.example                 # API configuration template
 ├── .env                         # API configuration (git-ignored)
 ├── go.mod
@@ -257,7 +292,7 @@ taxiprijs/
 ├── LICENSE
 ├── README.md
 ├── taxiprijs.1                  # Man page
-└── prompt.md                    # Project knowledge
+└── (prompts moved from prompt.md)
 ```
 
 ### Running Tests
@@ -280,6 +315,9 @@ gofmt -w .
 - Create feature branches from `dev` for new features
 - Test before committing
 - Never commit `.env`
+- Use the prompts in [`prompts/`](prompts/):
+  - [`prompts/push_prompt.md`](prompts/push_prompt.md) — standard branch/commit/push workflow (push every fix to `dev`)
+  - [`prompts/issue_prompt.md`](prompts/issue_prompt.md) — debugging workflow for GitHub issues
 
 ### Making New Features
 
@@ -291,6 +329,28 @@ gofmt -w .
 2. Implement and test your changes
 3. Commit with descriptive messages
 4. Merge back to `dev` when ready
+
+### Fixing Reported Issues
+
+When a user files an issue (from the app's "Report Issue" menu, or directly), use the
+**issue number** assigned to it and follow `prompts/issue_prompt.md` and `prompts/push_prompt.md`:
+
+1. Create a branch from `dev`:
+   ```bash
+   git checkout dev
+   git pull origin dev
+   git checkout -b fix/<short-description>
+   ```
+2. Fix the issue, **scoped to the OS/distro reported** in the issue
+3. Test: `go test ./...`, `go vet ./...`, `gofmt -w .`
+4. Commit, referencing the issue number:
+   ```bash
+   git commit -m "fix: describe the fix (resolves #<issue-number>)"
+   ```
+5. Push the branch and merge/PR into `dev` (never `main` or stable branches)
+6. Link the fix PR to the issue, and reference the issue number in the PR body
+
+The issue number given to the user in the app can be used directly for that PR/commit.
 
 ## License
 

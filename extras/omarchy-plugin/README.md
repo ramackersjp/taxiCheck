@@ -5,7 +5,7 @@ A bar widget for Omarchy Quattro that launches the TaxiCheck TUI.
 ## Install (after `make install`)
 
 ```sh
-omarchy plugin add https://github.com/ramackersjp/taxiprijs.git --path extras/omarchy-plugin
+omarchy plugin add https://github.com/ramackersjp/taxiCheck.git --path extras/omarchy-plugin
 ```
 
 Or manually:
