@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestMain(m *testing.M) {
@@ -230,6 +232,127 @@ func TestUpdateSuccessRelaunchesNewBinary(t *testing.T) {
 		t.Fatal("expected Quit after a successful relaunch")
 	}
 	_ = updated
+}
+
+func TestF3ReinstallsWithoutPull(t *testing.T) {
+	dir := initAmbiguousVersionRepo(t)
+	restore := overrideRepoLookup(t, dir)
+	defer restore()
+
+	var called string
+	orig := applyNewBinary
+	applyNewBinary = func(d string) (string, error, error) {
+		called = d
+		return filepath.Join(d, "taxiprijs"), nil, nil
+	}
+	defer func() { applyNewBinary = orig }()
+
+	m := Model{screen: screenUpdate, lang: "en", width: 80, height: 40}
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyF3})
+	if cmd == nil {
+		t.Fatal("F3 must start a reinstall")
+	}
+	msg := cmd()
+	res, ok := msg.(asyncMsg)
+	if !ok {
+		t.Fatalf("got %T, want asyncMsg", msg)
+	}
+	inner, ok := res.inner.(updateResultMsg)
+	if !ok {
+		t.Fatalf("inner %T, want updateResultMsg", res.inner)
+	}
+	if !inner.reinstall {
+		t.Fatal("F3 must mark the result as a reinstall, not a git pull")
+	}
+	if called != dir {
+		t.Fatalf("applyNewBinary dir=%q want %q", called, dir)
+	}
+	if inner.builtPath == "" {
+		t.Fatal("expected builtPath")
+	}
+	_ = updated
+}
+
+func TestUpdateScreenShowsF3(t *testing.T) {
+	m := Model{screen: screenUpdate, lang: "en", width: 80, height: 40, updateChecked: true}
+	out := m.View()
+	if !strings.Contains(out, "F3") {
+		t.Fatalf("update screen must advertise F3, got:\n%s", out)
+	}
+}
+
+func TestInstallOmarchyPluginCopiesQML(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "extras", "omarchy-plugin")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "BarWidget.qml"), []byte("/* qml */"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "manifest.json"), []byte("{}"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	origHome := osUserHome
+	osUserHome = func() (string, error) { return home, nil }
+	defer func() { osUserHome = origHome }()
+
+	if err := installOmarchyPlugin(dir); err != nil {
+		t.Fatalf("installOmarchyPlugin: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(home, ".config", "omarchy", "plugins", "jp.taxiprijs", "BarWidget.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "/* qml */" {
+		t.Fatalf("QML content = %q", got)
+	}
+}
+
+func TestApplyNewBinaryRunsMakeInstall(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/tp\n\ngo 1.22\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cmdDir := filepath.Join(dir, "cmd", "taxiprijs")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte("package main\nfunc main() {}\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	var makeDir string
+	origMake := runMakeInstall
+	origHome := osUserHome
+	origExe := osExecutable
+	home := t.TempDir()
+	runMakeInstall = func(d string) error {
+		makeDir = d
+		return nil
+	}
+	osUserHome = func() (string, error) { return home, nil }
+	osExecutable = func() (string, error) { return filepath.Join(home, "taxiprijs"), nil }
+	defer func() {
+		runMakeInstall = origMake
+		osUserHome = origHome
+		osExecutable = origExe
+	}()
+
+	built, rebuildErr, installErr := applyNewBinaryImpl(dir)
+	if rebuildErr != nil {
+		t.Fatalf("rebuild: %v", rebuildErr)
+	}
+	if installErr != nil {
+		t.Fatalf("install: %v", installErr)
+	}
+	if makeDir != dir {
+		t.Fatalf("make install dir=%q want %q", makeDir, dir)
+	}
+	if _, err := os.Stat(built); err != nil {
+		t.Fatalf("built binary missing: %v", err)
+	}
 }
 
 func TestPullUpdateAppliesNewBinary(t *testing.T) {

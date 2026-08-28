@@ -190,6 +190,7 @@ type updateResultMsg struct {
 	rebuildErr error
 	installErr error
 	builtPath  string
+	reinstall  bool
 }
 
 type branchResultMsg struct {
@@ -418,7 +419,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err.Error()
 			return m, nil
 		}
-		m.updateStatus = t(m.lang, "update_success")
+		if msg.reinstall {
+			m.updateStatus = t(m.lang, "update_reinstall_ok")
+		} else {
+			m.updateStatus = t(m.lang, "update_success")
+		}
 		m.hasUpdate = false
 		if msg.rebuildErr != nil {
 			m.updateStatus += "\n" + t(m.lang, "update_rebuild_fail")
@@ -845,6 +850,8 @@ func (m Model) updateUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		m.updateChecked = false
 		return m.runOp(m.checkUpdate())
+	case "f3":
+		return m.runOp(m.reinstall())
 	}
 	return m, nil
 }
@@ -1184,6 +1191,26 @@ func (m Model) pullUpdate() tea.Cmd {
 			builtPath:  built,
 			rebuildErr: rebuildErr,
 			installErr: installErr,
+		}
+	}
+}
+
+// reinstall rebuilds the binary and runs `make install` (user bin + Omarchy
+// QML plugin) without pulling. Bound to F3 on the update screen.
+func (m Model) reinstall() tea.Cmd {
+	lang := m.lang
+	return func() tea.Msg {
+		dir := gitRepoDir()
+		if dir == "" {
+			return updateResultMsg{err: fmt.Errorf("%s", t(lang, "update_no_repo"))}
+		}
+		built, rebuildErr, installErr := applyNewBinary(dir)
+		return updateResultMsg{
+			success:    true,
+			builtPath:  built,
+			rebuildErr: rebuildErr,
+			installErr: installErr,
+			reinstall:  true,
 		}
 	}
 }
@@ -1916,6 +1943,8 @@ func (m Model) viewUpdate() string {
 		}
 	}
 
+	b.WriteString("\n")
+	b.WriteString(keyStyle.Render("F3") + " " + t(m.lang, "update_reinstall") + "\n")
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "update_help")))
 	return b.String()

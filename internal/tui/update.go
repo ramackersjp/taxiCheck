@@ -154,12 +154,113 @@ func goBinary() string {
 // applyNewBinary rebuilds from dir and installs the result. Overridable in tests.
 var applyNewBinary = applyNewBinaryImpl
 
+// runMakeInstall is overridable so tests do not invoke a real Makefile.
+var runMakeInstall = runMakeInstallImpl
+
 func applyNewBinaryImpl(dir string) (builtPath string, rebuildErr, installErr error) {
 	built, err := rebuildBinary(dir)
 	if err != nil {
 		return "", err, nil
 	}
-	return built, nil, installBinary(built, dir)
+	// Always place the binary on PATH first so a failed `make` still leaves
+	// a runnable update.
+	_ = installBinary(built, dir)
+	if err := runMakeInstall(dir); err != nil {
+		// `make install` copies the Omarchy QML plugin and (when sudo -n
+		// works) the system binary. If make is missing, still copy QML.
+		if qerr := installOmarchyPlugin(dir); qerr != nil {
+			return built, nil, err
+		}
+		return built, nil, nil
+	}
+	return built, nil, nil
+}
+
+func runMakeInstallImpl(dir string) error {
+	makeBin, err := exec.LookPath("make")
+	if err != nil {
+		return fmt.Errorf("make not found")
+	}
+	cmd := exec.Command(makeBin, "install")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+func installOmarchyPlugin(dir string) error {
+	home, err := osUserHome()
+	if err != nil || home == "" {
+		return nil
+	}
+	src := filepath.Join(dir, "extras", "omarchy-plugin")
+	if _, err := os.Stat(src); err != nil {
+		return nil
+	}
+	dst := filepath.Join(home, ".config", "omarchy", "plugins", "jp.taxiprijs")
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+	for _, name := range []string{"BarWidget.qml", "manifest.json", "README.md"} {
+		from := filepath.Join(src, name)
+		if _, err := os.Stat(from); err != nil {
+			continue
+		}
+		if err := copyRegular(from, filepath.Join(dst, name)); err != nil {
+			return err
+		}
+	}
+	restartOmarchyShell()
+	return nil
+}
+
+func restartOmarchyShell() {
+	if _, err := exec.LookPath("omarchy"); err == nil {
+		_ = exec.Command("omarchy", "restart", "shell").Run()
+		return
+	}
+	if _, err := exec.LookPath("omarchy-shell"); err == nil {
+		_ = exec.Command("omarchy-shell", "-q", "shell", "rescanPlugins").Run()
+	}
+}
+
+func copyRegular(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(dst), ".taxiprijs-copy-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if _, err := io.Copy(tmp, in); err != nil {
+		tmp.Close()
+		return err
+	}
+	mode := info.Mode().Perm()
+	if mode == 0 {
+		mode = 0644
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, dst)
 }
 
 // rebuildBinary compiles into a temp file, then atomically replaces the
