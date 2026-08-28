@@ -97,13 +97,9 @@ type updateCheckMsg struct {
 }
 
 type updateResultMsg struct {
-	success         bool
-	err             error
-	rebuilt         string
-	rebuildErr      error
-	installed       []string
-	installErr      error
-	installFallback bool
+	success    bool
+	err        error
+	rebuildErr error
 }
 
 type branchResultMsg struct {
@@ -323,20 +319,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.updateStatus = t(m.lang, "update_success")
 			m.hasUpdate = false
-			if msg.rebuilt != "" {
-				m.updateStatus += "\n" + t(m.lang, "update_rebuilt")
-			}
 			if msg.rebuildErr != nil {
-				m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_rebuild_fail"), msg.rebuildErr)
-			}
-			if msg.installErr != nil {
-				m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_install_fail"), msg.installErr)
-			} else if len(msg.installed) > 0 {
-				if msg.installFallback {
-					m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_install_fallback"), strings.Join(msg.installed, ", "))
-				} else {
-					m.updateStatus += "\n" + fmt.Sprintf(t(m.lang, "update_installed"), strings.Join(msg.installed, ", "))
-				}
+				m.updateStatus += "\n" + t(m.lang, "update_rebuild_fail")
 			}
 		}
 		return m, nil
@@ -419,7 +403,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.branchStatus = ""
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "1":
 		m.screen = screenCalc
@@ -490,7 +474,7 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc":
 		if m.setupStep == 0 {
@@ -586,7 +570,7 @@ func (m Model) updateSetupPricing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc":
 		if m.settingsStep == 0 {
@@ -683,7 +667,7 @@ func (m Model) updateSettingsPricing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateHelp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc", "enter":
 		m.screen = screenMain
@@ -694,7 +678,7 @@ func (m Model) updateHelp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc", "enter":
 		m.screen = screenMain
@@ -718,7 +702,7 @@ func (m Model) updateUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateBranch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc", "enter":
 		m.screen = screenMain
@@ -750,7 +734,7 @@ func (m Model) updateBranch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateUninstall(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc":
 		m.screen = screenMain
@@ -791,7 +775,7 @@ func (m Model) fetchSuggestions() (tea.Model, tea.Cmd) {
 
 func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "f2":
 		if m.routeMode == "fastest" {
@@ -878,7 +862,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc", "enter":
 		m.screen = screenCalc
@@ -996,18 +980,10 @@ func (m Model) pullUpdate() tea.Cmd {
 		// it so the user actually runs the new version after the update.
 		msg := updateResultMsg{success: true}
 		if dir != "" {
-			builtPath, buildErr := rebuildBinary(dir)
-			if buildErr != nil {
+			if _, buildErr := rebuildBinary(dir); buildErr != nil {
 				msg.rebuildErr = buildErr
 			} else {
-				msg.rebuilt = builtPath
-				installed, fallback, installErr := installBinary(builtPath, dir)
-				if installErr != nil {
-					msg.installErr = installErr
-				} else {
-					msg.installed = installed
-					msg.installFallback = fallback
-				}
+				_, _, _ = installBinary(filepath.Join(dir, "taxiprijs"), dir)
 			}
 		}
 		return msg
@@ -1228,7 +1204,7 @@ func (m *Model) initReportInputs() {
 
 func (m Model) updateReport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "esc":
 		if m.reportSubmitted {
