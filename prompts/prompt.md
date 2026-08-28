@@ -28,6 +28,7 @@ taxiprijs/
 │   ├── calc/calc.go               # Fare calculation engine
 │   ├── config/config.go           # TOML configuration
 │   ├── issue/issue.go             # Report issue: local log + GitHub via gh
+│   ├── issue/issue_test.go        # Unit tests
 │   ├── routing/routing.go         # OSRM + Nominatim API client
 │   └── tui/                       # Bubble Tea TUI
 │       ├── model.go               # Main model with all screens
@@ -124,6 +125,7 @@ taxiprijs/
 ## Testing Requirements
 - Unit tests for calc package
 - Unit tests for config package
+- Unit tests for issue package
 - Run with: `go test ./...`
 - Vet with: `go vet ./...`
 - Format with: `gofmt -w .`

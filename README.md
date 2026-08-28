@@ -318,7 +318,8 @@ taxiprijs/
 │   │   ├── config.go            # TOML configuration
 │   │   └── config_test.go       # Unit tests
 │   ├── issue/
-│   │   └── issue.go             # Report issue: local log + GitHub via gh CLI
+│   │   ├── issue.go             # Report issue: local log + GitHub via gh CLI
+│   │   └── issue_test.go        # Unit tests
 │   ├── routing/
 │   │   └── routing.go           # OSRM + Nominatim API client
 │   └── tui/
@@ -331,7 +332,8 @@ taxiprijs/
 │   └── omarchy-plugin/          # Omarchy Quattro bar widget
 │       ├── manifest.json
 │       ├── BarWidget.qml
-│       └── README.md
+│       ├── README.md
+│       └── reload-plugin.sh     # Dev helper to deploy QML changes
 ├── prompts/
 │   ├── prompt.md                # Project knowledge
 │   ├── push_prompt.md           # Git workflow (branch/commit/push)
@@ -344,8 +346,7 @@ taxiprijs/
 ├── LICENSE
 ├── Makefile                     # Build, install, uninstall, cross-compile
 ├── README.md
-├── taxiprijs.1                  # Man page
-└── (prompts moved from prompt.md)
+└── taxiprijs.1                  # Man page
 ```
 
 ### Running Tests
@@ -360,8 +361,6 @@ go test ./...
 go vet ./...
 gofmt -w .
 ```
-
-## Git Workflow
 
 ## Git Workflow
 

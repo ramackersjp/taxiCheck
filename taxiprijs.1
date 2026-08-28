@@ -10,7 +10,8 @@ is a terminal user interface application for calculating taxi fares in the Nethe
 It supports configurable pricing for different passenger groups and uses TOML for configuration.
 .PP
 The main menu displays the current version and provides options for fare calculation,
-settings, help, initial setup, update checking, branch switching, and uninstalling.
+settings, help, initial setup, update checking, branch switching, uninstalling, and
+reporting issues.
 .SH OPTIONS
 .B taxiprijs
 does not take any command line options.
@@ -37,6 +38,9 @@ Switch branch (dev / stable)
 .B 7
 Uninstall
 .TP
+.B 8
+Report issue
+.TP
 .B q
 Quit
 .TP
@@ -61,6 +65,20 @@ Development branch - may be unstable
 .TP
 .B v1.0.1
 Stable release branch
+.PP
+All stable release branches (e.g. v1.0.0, v1.0.1) are listed and can be
+switched to from the TUI; local changes are stashed before the switch and
+restored afterwards.
+.SH REPORTING ISSUES
+Option 8 in the main menu starts a report.
+.PP
+Enter a problem description and, if available, the error output. The report is
+always saved to
+.B ~/.taxiprijs/logs/
+and, when the
+.B gh
+CLI is installed and the repository has a GitHub remote, filed as a GitHub
+issue whose number is shown after submission.
 .SH UNINSTALLING
 Option 7 in the main menu starts the uninstall process.
 .PP
