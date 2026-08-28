@@ -117,12 +117,12 @@ func TestSwitchBranchRebuildsAndInstalls(t *testing.T) {
 	defer restore()
 
 	var called string
-	orig := applyNewBinary
-	applyNewBinary = func(d string) (string, error, error) {
+	orig := applyBranchBinary
+	applyBranchBinary = func(d string) (string, error, error) {
 		called = d
 		return filepath.Join(d, "taxiprijs"), nil, nil
 	}
-	defer func() { applyNewBinary = orig }()
+	defer func() { applyBranchBinary = orig }()
 
 	msg := Model{}.switchBranch("v1.0.1")()
 	res, ok := msg.(branchSwitchMsg)
@@ -133,7 +133,7 @@ func TestSwitchBranchRebuildsAndInstalls(t *testing.T) {
 		t.Fatalf("switch: %v", res.err)
 	}
 	if called != dir {
-		t.Fatalf("applyNewBinary dir=%q want %q (must rebuild this branch)", called, dir)
+		t.Fatalf("applyBranchBinary dir=%q want %q (must rebuild this branch)", called, dir)
 	}
 	if res.builtPath == "" {
 		t.Fatal("expected builtPath so the UI can relaunch")
@@ -141,6 +141,47 @@ func TestSwitchBranchRebuildsAndInstalls(t *testing.T) {
 	got := strings.TrimSpace(gitIn(t, dir, "branch", "--show-current"))
 	if got != "v1.0.1" {
 		t.Fatalf("HEAD = %q, want v1.0.1", got)
+	}
+}
+
+func TestSwitchBranchDoesNotRunMakeInstall(t *testing.T) {
+	dir := initAmbiguousVersionRepo(t)
+	restore := overrideRepoLookup(t, dir)
+	defer restore()
+
+	origApply := applyNewBinary
+	origMake := runMakeInstall
+	applyNewBinary = func(string) (string, error, error) {
+		t.Fatal("branch switch must not call applyNewBinary (make install / sudo)")
+		return "", nil, nil
+	}
+	runMakeInstall = func(string) error {
+		t.Fatal("branch switch must not run make install")
+		return nil
+	}
+	defer func() {
+		applyNewBinary = origApply
+		runMakeInstall = origMake
+	}()
+
+	msg := Model{}.switchBranch("v1.0.1")()
+	res := msg.(branchSwitchMsg)
+	if res.err != nil {
+		t.Fatalf("switch: %v", res.err)
+	}
+}
+
+func TestHelpExplainsPullThenF3(t *testing.T) {
+	m := sizedModel("nl")
+	m.screen = screenHelp
+	out := m.View()
+	if !strings.Contains(out, "eerst pullen") && !strings.Contains(out, "Eerst pull") {
+		if !strings.Contains(out, "druk U om te pullen") {
+			t.Fatalf("help must explain pull then F3, got:\n%s", out)
+		}
+	}
+	if !strings.Contains(out, "F3") {
+		t.Fatalf("help must mention F3, got:\n%s", out)
 	}
 }
 
@@ -260,18 +301,22 @@ func overrideRepoLookup(t *testing.T, dir string) func() {
 	t.Helper()
 	origExe, origHome, origWd := osExecutable, osUserHome, osGetwd
 	origApply := applyNewBinary
+	origBranch := applyBranchBinary
 	home := t.TempDir()
 	elsewhere := t.TempDir()
 	osGetwd = func() (string, error) { return dir, nil }
 	osUserHome = func() (string, error) { return home, nil }
 	osExecutable = func() (string, error) { return filepath.Join(elsewhere, "taxiprijs"), nil }
-	applyNewBinary = func(string) (string, error, error) {
+	stub := func(string) (string, error, error) {
 		return filepath.Join(dir, "taxiprijs"), nil, nil
 	}
+	applyNewBinary = stub
+	applyBranchBinary = stub
 	return func() {
 		osExecutable = origExe
 		osUserHome = origHome
 		osGetwd = origWd
 		applyNewBinary = origApply
+		applyBranchBinary = origBranch
 	}
 }
