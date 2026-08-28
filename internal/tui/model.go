@@ -1202,7 +1202,7 @@ func (m Model) runUninstall() tea.Cmd {
 	}
 }
 
-func (m Model) initReportInputs() {
+func (m *Model) initReportInputs() {
 	iw := m.inputWidth()
 	m.reportDesc = textinput.New()
 	m.reportDesc.Placeholder = t(m.lang, "report_desc_ph")
