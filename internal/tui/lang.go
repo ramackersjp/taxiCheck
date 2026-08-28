@@ -109,6 +109,7 @@ var translations = map[string]map[string]string{
 		"update_success":      "Update pulled successfully!",
 		"update_rebuild_fail": "Update pulled, but the app could not be rebuilt.",
 		"update_install_fail": "Update pulled, but the new binary could not be installed.",
+		"update_restart":      "Restart the app to run the new version.",
 		"update_no_repo":      "Could not find the source repository to update.",
 		"update_help":         "Esc/Enter: back | u: pull update | r: re-check",
 
@@ -267,6 +268,7 @@ var translations = map[string]map[string]string{
 		"update_success":      "Update succesvol opgehaald!",
 		"update_rebuild_fail": "Update opgehaald, maar de app kon niet opnieuw worden gebouwd.",
 		"update_install_fail": "Update opgehaald, maar de nieuwe binary kon niet worden geïnstalleerd.",
+		"update_restart":      "Herstart de app om de nieuwe versie te gebruiken.",
 		"update_no_repo":      "Kon de bronrepository niet vinden om te updaten.",
 		"update_help":         "Esc/Enter: terug | u: update ophalen | r: opnieuw controleren",
 
