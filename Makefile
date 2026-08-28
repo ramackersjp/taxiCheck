@@ -2,12 +2,18 @@ APP_NAME := taxiprijs
 VERSION  := 1.0.1
 GOFLAGS  := -trimpath
 LDFLAGS  := -s -w -X main.version=$(VERSION)
+PLUGIN_ID := jp.taxiprijs
+PLUGIN_DST := $(HOME)/.config/omarchy/plugins/$(PLUGIN_ID)
 
 # Cross-compile targets
-.PHONY: build build-linux build-macos build-windows install uninstall clean
+.PHONY: build build-linux build-macos build-windows install install-user install-system uninstall clean
 
+# Build to a temp name then rename so this works while taxiprijs is running
+# (in-place go build -o taxiprijs fails with ETXTBSY).
 build:
-	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(APP_NAME) ./cmd/taxiprijs
+	go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o .$(APP_NAME).new ./cmd/taxiprijs
+	chmod +x .$(APP_NAME).new
+	mv -f .$(APP_NAME).new $(APP_NAME)
 
 build-linux:
 	@mkdir -p dist
@@ -26,21 +32,33 @@ build-windows:
 build-all: build-linux build-macos build-windows
 	@echo "Builds complete in dist/"
 
-install: build
+# User-writable install: binary, source-repo marker, Omarchy QML plugin.
+# No sudo. Safe to run from the TUI after a pull or F3.
+install-user:
+	@mkdir -p $(HOME)/.local/bin $(HOME)/.taxiprijs
+	@cp $(APP_NAME) $(HOME)/.local/bin/$(APP_NAME)
+	@pwd > $(HOME)/.taxiprijs/source-repo
+	@mkdir -p $(PLUGIN_DST)
+	@cp extras/omarchy-plugin/* $(PLUGIN_DST)/
+	@if [ -f "$(HOME)/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \
+		jq --arg id $(PLUGIN_ID) 'if ([.bar.layout.center[]? , .bar.layout.left[]? , .bar.layout.right[]?] | any(.id == $$id)) then . else .bar.layout.right = ((.bar.layout.right // []) + [{"id": $$id}]) end' "$(HOME)/.config/omarchy/shell.json" > "$(HOME)/.config/omarchy/shell.json.tmp" && mv "$(HOME)/.config/omarchy/shell.json.tmp" "$(HOME)/.config/omarchy/shell.json"; \
+	fi
+	@if command -v omarchy >/dev/null 2>&1; then omarchy restart shell || true; \
+	elif command -v omarchy-shell >/dev/null 2>&1; then omarchy-shell -q shell rescanPlugins || true; fi
+	@echo "Installed: $(HOME)/.local/bin/$(APP_NAME)"
+	@echo "Omarchy QML plugin: $(PLUGIN_DST)"
+
+install-system:
 	sudo install -Dm755 $(APP_NAME) /usr/local/bin/$(APP_NAME)
 	sudo install -Dm644 extras/$(APP_NAME).desktop /usr/share/applications/$(APP_NAME).desktop
-	@mkdir -p $$HOME/.local/bin $$HOME/.taxiprijs
-	@cp $(APP_NAME) $$HOME/.local/bin/$(APP_NAME)
-	@pwd > $$HOME/.taxiprijs/source-repo
-	@mkdir -p $$HOME/.config/omarchy/plugins/jp.taxiprijs
-	@cp extras/omarchy-plugin/* $$HOME/.config/omarchy/plugins/jp.taxiprijs/
-	@if [ -f "$$HOME/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \
-		jq --arg id jp.taxiprijs 'if ([.bar.layout.center[]? , .bar.layout.left[]? , .bar.layout.right[]?] | any(.id == $$id)) then . else .bar.layout.right = ((.bar.layout.right // []) + [{"id": $$id}]) end' "$$HOME/.config/omarchy/shell.json" > "$$HOME/.config/omarchy/shell.json.tmp" && mv "$$HOME/.config/omarchy/shell.json.tmp" "$$HOME/.config/omarchy/shell.json"; \
-	fi
-	@if command -v omarchy-shell >/dev/null 2>&1; then omarchy-shell -q shell rescanPlugins || true; fi
 	@echo "Installed: /usr/local/bin/$(APP_NAME)"
 	@echo "Desktop entry: /usr/share/applications/$(APP_NAME).desktop"
-	@echo "Omarchy QML plugin: $$HOME/.config/omarchy/plugins/jp.taxiprijs"
+
+# Always update the user binary + QML. System files only if passwordless sudo
+# is available, so `make install` from the TUI never blocks on a password.
+install: build install-user
+	@sudo -n install -Dm755 $(APP_NAME) /usr/local/bin/$(APP_NAME) 2>/dev/null || true
+	@sudo -n install -Dm644 extras/$(APP_NAME).desktop /usr/share/applications/$(APP_NAME).desktop 2>/dev/null || true
 
 uninstall:
 	sudo rm -f /usr/local/bin/$(APP_NAME)

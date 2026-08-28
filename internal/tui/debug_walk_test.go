@@ -39,6 +39,8 @@ func press(m tea.Model, keys ...string) tea.Model {
 			msg = tea.KeyMsg{Type: tea.KeyDown}
 		case "f2":
 			msg = tea.KeyMsg{Type: tea.KeyF2}
+		case "f3":
+			msg = tea.KeyMsg{Type: tea.KeyF3}
 		case "space":
 			msg = tea.KeyMsg{Type: tea.KeySpace, Runes: []rune(" ")}
 		default:
