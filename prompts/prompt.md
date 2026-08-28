@@ -27,12 +27,17 @@ taxiprijs/
 ├── internal/
 │   ├── calc/calc.go               # Fare calculation engine
 │   ├── config/config.go           # TOML configuration
+│   ├── issue/issue.go             # Report issue: local log + GitHub via gh
 │   ├── routing/routing.go         # OSRM + Nominatim API client
 │   └── tui/                       # Bubble Tea TUI
 │       ├── model.go               # Main model with all screens
 │       ├── style.go               # Lip Gloss styling
 │       ├── lang.go                # EN/NL translations
-│       └── logo.go                # Unicode block art taxi logo
+│       └── logo.go                # ASCII taxi logo (Unicode block art)
+├── prompts/
+│   ├── prompt.md                   # This file (project knowledge)
+│   ├── push_prompt.md              # Git workflow: branch/commit/push to dev
+│   └── issue_prompt.md             # Debugging workflow for GitHub issues
 ├── extras/
 │   ├── taxiprijs.desktop          # Linux desktop entry
 │   └── omarchy-plugin/            # Omarchy Quattro bar-widget
@@ -48,8 +53,7 @@ taxiprijs/
 ├── Makefile                       # Build, install, uninstall, cross-compile
 ├── LICENSE
 ├── README.md
-├── taxiprijs.1                    # Man page
-└── prompt.md                      # This file
+└── taxiprijs.1                    # Man page
 ```
 
 ## Key Design Decisions
@@ -83,8 +87,10 @@ taxiprijs/
 5. Initial Setup - First-run: language selection + pricing configuration
 6. Result - Shows route info (distance, duration) and calculated fare
 7. Check for Updates - On stable branches compares the running version against the latest GitHub release; on dev compares the local branch with its remote (reports commits behind). Press `u` to pull, `r` to re-check
-8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.1); local changes are stashed before the switch and restored after it
+8. Switch Branch - Switch between dev and stable branches (e.g. v1.0.0, v1.0.1), including older releases; local changes are stashed before the switch and restored after it
 9. Uninstall - Two-step confirmation, then removes the application
+10. Report Issue - Describe problem + paste error output; saved to local log
+    (~/.taxiprijs/logs/) and optionally filed on GitHub via gh CLI
 
 ## Logo
 - Unicode block art taxi rendered centered above the content border
@@ -179,10 +185,13 @@ taxiprijs/
 - Version display in main menu
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI
-- Switch between dev and stable branches from the TUI
+- Switch between dev and stable branches from the TUI (including older releases like v1.0.0)
 - Local changes stashed and restored automatically on branch switch
 - Two-step uninstall confirmation from the main menu
 - Omarchy Quattro bar widget installed by `make install` (launches the TUI from the bar)
+- Report Issue from the main menu (option 8): description + error output, saved to a local
+  log at ~/.taxiprijs/logs/, and optionally filed on GitHub via the `gh` CLI. Works without
+  gh/GitHub (falls back to local log only). Collects OS/distro/arch/kernel/Go info.
 
 ## Installation
 
