@@ -33,7 +33,7 @@ For a normal install you get the **latest stable release** by explicitly checkin
 ```bash
 git clone https://github.com/ramackersjp/taxiCheck.git
 cd taxiCheck
-git checkout v1.0.1   # latest stable release
+git checkout v1.1.0   # latest stable release
 cp .env.example .env
 ```
 
@@ -136,9 +136,9 @@ On first launch, the application will perform initial setup:
 1. Press **6** from the main menu
 2. Use ↑/↓ to select a branch
 3. Press **Space** to switch to the selected branch
-4. Available branches: `dev` and all stable release branches (e.g. `v1.0.0`, `v1.0.1`)
+4. Available branches: `dev` and all stable release branches (e.g. `v1.1.0`)
 
-You can switch to **any previous stable release** (for example `v1.0.0`) and back to
+You can switch to a **stable release** (for example `v1.1.0`) and back to
 `dev` at any time. Feature branches are intentionally not listed. If a release branch
 is not yet checked out locally, the app creates it automatically from the remote.
 
@@ -197,7 +197,7 @@ remote: the issue is simply saved locally.
 | Branch | Purpose | Stability |
 |--------|---------|-----------|
 | `dev` | Development (GitHub default) | Chaotic, unstable, may break at any time |
-| `v1.0.1` | Stable release | Current stable version, recommended for installs |
+| `v1.1.0` | Stable release | Current stable version, recommended for installs |
 | `main` | Production | Only merged from stable releases |
 
 > **Note:** The GitHub default branch is `dev` for development. For a normal install, check out the latest stable branch (as shown in [From Source](#from-source)) so you run a stable release. Use `dev` only if you want the latest in-development features.
@@ -221,7 +221,7 @@ NOMINATIM_URL=https://nominatim.openstreetmap.org
 PDOK_URL=https://api.pdok.nl/bzk/locatieserver/search/v3_1
 
 # User agent for API requests (required by Nominatim)
-USER_AGENT=TaxiCheck/1.0
+USER_AGENT=TaxiCheck/1.1
 ```
 
 ### Configuration File Location
