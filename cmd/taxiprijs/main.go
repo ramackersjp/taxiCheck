@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -10,9 +11,19 @@ import (
 	"github.com/ramackersjp/taxiCheck/internal/tui"
 )
 
+// Set at build time by the Makefile: -X main.version=$(VERSION)
+var version = "dev"
+
 func main() {
 	routing.LoadEnv()
 
+	if version != "" && version != "dev" {
+		v := version
+		if !strings.HasPrefix(v, "v") {
+			v = "v" + v
+		}
+		tui.SetVersion(v)
+	}
 	tui.DetectVersion()
 
 	p := tea.NewProgram(tui.NewModel(), tea.WithAltScreen())

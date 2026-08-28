@@ -192,7 +192,13 @@ func GetRoute(lat1, lon1, lat2, lon2 float64, mode string) (*RouteResult, error)
 	coords := fmt.Sprintf("%f,%f;%f,%f", lon1, lat1, lon2, lat2)
 	reqURL := fmt.Sprintf("%s/route/v1/driving/%s?overview=false&alternatives=true", osrmURL, coords)
 
-	resp, err := httpClient.Get(reqURL)
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create routing request: %w", err)
+	}
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("routing request failed: %w", err)
 	}
@@ -357,11 +363,42 @@ func geocodePdok(address string) (float64, float64, error) {
 	}
 
 	for _, s := range parsePdokDocs(body) {
-		if s.Lat != 0 || s.Lon != 0 {
+		if (s.Lat != 0 || s.Lon != 0) && pdokMatchesQuery(q, s.Display) {
 			return s.Lat, s.Lon, nil
 		}
 	}
 	return 0, 0, fmt.Errorf("address not found: %s", address)
+}
+
+// pdokMatchesQuery requires every meaningful query token to appear in the
+// PDOK display name. Without this, "Centraal Station, Rotterdam" matches
+// "Metrostation Centraal Station, Amsterdam" and the fare is calculated
+// for the wrong city.
+func pdokMatchesQuery(query, display string) bool {
+	tokens := queryTokens(query)
+	if len(tokens) == 0 {
+		return true
+	}
+	d := strings.ToLower(display)
+	for _, tok := range tokens {
+		if !strings.Contains(d, tok) {
+			return false
+		}
+	}
+	return true
+}
+
+func queryTokens(q string) []string {
+	q = strings.ToLower(strings.ReplaceAll(q, ",", " "))
+	var tokens []string
+	for _, t := range strings.Fields(q) {
+		t = strings.Trim(t, ".-")
+		if len(t) < 3 {
+			continue
+		}
+		tokens = append(tokens, t)
+	}
+	return tokens
 }
 
 func pdokBase() string {

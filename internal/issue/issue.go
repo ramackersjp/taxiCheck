@@ -107,13 +107,42 @@ func ghAvailable() bool {
 
 // repoDir returns the local git repository directory, if the app runs from one.
 func repoDir() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return ""
+	home, _ := os.UserHomeDir()
+	wd, _ := os.Getwd()
+	exe, _ := os.Executable()
+	return findRepoDir(home, wd, exe)
+}
+
+// findRepoDir locates the source checkout so Report Issue still works when
+// the binary lives in /usr/local/bin or ~/.local/bin (make install writes
+// the path to ~/.taxiprijs/source-repo).
+func findRepoDir(home, wd, exe string) string {
+	if home != "" {
+		data, err := os.ReadFile(filepath.Join(home, ".taxiprijs", "source-repo"))
+		if err == nil {
+			dir := strings.TrimSpace(string(data))
+			if isGitRepo(dir) {
+				return dir
+			}
+		}
 	}
-	dir := filepath.Dir(exe)
-	for {
-		if fileExists(filepath.Join(dir, ".git")) {
+	if dir := walkGit(wd); dir != "" {
+		return dir
+	}
+	if exe != "" {
+		return walkGit(filepath.Dir(exe))
+	}
+	return ""
+}
+
+func isGitRepo(dir string) bool {
+	return dir != "" && fileExists(filepath.Join(dir, ".git"))
+}
+
+func walkGit(start string) string {
+	dir := start
+	for dir != "" {
+		if isGitRepo(dir) {
 			return dir
 		}
 		parent := filepath.Dir(dir)
@@ -122,6 +151,7 @@ func repoDir() string {
 		}
 		dir = parent
 	}
+	return ""
 }
 
 // remoteURL returns the first (fetch) remote URL, or "" if none is set.

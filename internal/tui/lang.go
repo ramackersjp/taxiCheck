@@ -84,7 +84,7 @@ var translations = map[string]map[string]string{
 		"calc_help":                   "Tab: next field | F2: route mode | Enter: calculate | Esc: cancel",
 
 		// Loading
-		"loading": "Calculating route...",
+		"loading": "Please wait...",
 
 		// Result
 		"result_title":    "Fare Result",
@@ -242,7 +242,7 @@ var translations = map[string]map[string]string{
 		"calc_help":                   "Tab: volgend veld | F2: route type | Enter: berekenen | Esc: annuleren",
 
 		// Loading
-		"loading": "Route berekenen...",
+		"loading": "Even geduld...",
 
 		// Result
 		"result_title":    "Prijs Resultaat",

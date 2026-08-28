@@ -1,6 +1,28 @@
 package issue
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestFindRepoDirUsesRememberedSource(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	if err := os.Mkdir(filepath.Join(repo, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(home, ".taxiprijs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".taxiprijs", "source-repo"), []byte(repo+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	got := findRepoDir(home, t.TempDir(), filepath.Join(t.TempDir(), "taxiprijs"))
+	if got != repo {
+		t.Fatalf("got %q, want %q", got, repo)
+	}
+}
 
 func TestSiteFromRemote(t *testing.T) {
 	cases := map[string]string{

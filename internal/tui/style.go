@@ -28,9 +28,10 @@ var (
 			Foreground(黄色).
 			Bold(true)
 
+	// No MarginTop: helpStyle is concatenated into list rows (branch
+	// names, suggestions). A top margin put "* " and "dev" on two lines.
 	helpStyle = lipgloss.NewStyle().
-			Foreground(灰色).
-			MarginTop(1)
+			Foreground(灰色)
 
 	errorStyle = lipgloss.NewStyle().
 			Foreground(红色).

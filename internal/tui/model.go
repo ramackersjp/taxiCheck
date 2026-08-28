@@ -212,6 +212,13 @@ type issueResultMsg struct {
 	res issue.Result
 }
 
+// asyncMsg wraps a background result so a cancelled wait (Esc while
+// loading) cannot apply a stale route/update/branch/issue response.
+type asyncMsg struct {
+	gen   int
+	inner tea.Msg
+}
+
 type Model struct {
 	screen    screen
 	config    *config.Config
@@ -259,6 +266,7 @@ type Model struct {
 	reportFocus     int
 	reportResult    string
 	reportSubmitted bool
+	opGen           int
 }
 
 func NewModel() Model {
@@ -331,6 +339,17 @@ func (m Model) contentWidth() int {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if a, ok := msg.(asyncMsg); ok {
+		if a.gen != m.opGen {
+			return m, nil
+		}
+		if a.inner == nil {
+			m.loading = false
+			return m, nil
+		}
+		msg = a.inner
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -449,9 +468,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// runOp marks the UI as waiting and stamps the command so Esc can cancel
+// it: a late result with a stale gen is ignored.
+func (m Model) runOp(cmd tea.Cmd) (Model, tea.Cmd) {
+	m.loading = true
+	m.err = ""
+	m.opGen++
+	gen := m.opGen
+	return m, func() tea.Msg {
+		if cmd == nil {
+			return asyncMsg{gen: gen}
+		}
+		return asyncMsg{gen: gen, inner: cmd()}
+	}
+}
+
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.loading {
-		return m, nil
+		switch msg.String() {
+		case "q":
+			return m, tea.Quit
+		case "esc":
+			m.loading = false
+			m.opGen++
+			m.err = ""
+			switch m.screen {
+			case screenUpdate, screenBranch, screenUninstall, screenReport:
+				m.screen = screenMain
+			}
+			return m, nil
+		default:
+			return m, nil
+		}
 	}
 
 	switch m.screen {
@@ -527,16 +575,14 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateStatus = ""
 		m.err = ""
 		if !m.updateChecked {
-			m.loading = true
-			return m, m.checkUpdate()
+			return m.runOp(m.checkUpdate())
 		}
 		return m, nil
 	case "6":
 		m.screen = screenBranch
 		m.branchStatus = ""
 		m.err = ""
-		m.loading = true
-		return m, m.fetchBranches()
+		return m.runOp(m.fetchBranches())
 	case "7":
 		m.screen = screenUninstall
 		m.uninstallStep = 0
@@ -616,6 +662,7 @@ func (m Model) updateSetupLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
 			j++
 		}
+		m.focusIdx = 0
 		if len(m.inputs) > 0 {
 			m.inputs[0].Focus()
 		}
@@ -713,6 +760,7 @@ func (m Model) updateSettingsLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
 			j++
 		}
+		m.focusIdx = 0
 		if len(m.inputs) > 0 {
 			m.inputs[0].Focus()
 		}
@@ -768,16 +816,12 @@ func (m Model) updateUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "u":
 		if m.hasUpdate {
-			m.loading = true
-			m.err = ""
-			return m, m.pullUpdate()
+			return m.runOp(m.pullUpdate())
 		}
 		return m, nil
 	case "r":
-		m.loading = true
-		m.err = ""
 		m.updateChecked = false
-		return m, m.checkUpdate()
+		return m.runOp(m.checkUpdate())
 	}
 	return m, nil
 }
@@ -804,9 +848,7 @@ func (m Model) updateBranch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.branchList) > 0 {
 			target := m.branchList[m.branchIdx]
 			if target != m.currentBranch {
-				m.loading = true
-				m.err = ""
-				return m, m.switchBranch(target)
+				return m.runOp(m.switchBranch(target))
 			}
 		}
 		return m, nil
@@ -832,9 +874,7 @@ func (m Model) updateUninstall(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.uninstallStep == 1 {
-			m.loading = true
-			m.err = ""
-			return m, m.runUninstall()
+			return m.runOp(m.runUninstall())
 		}
 		return m, nil
 	}
@@ -1227,6 +1267,9 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 func (m Model) runUninstall() tea.Cmd {
 	return func() tea.Msg {
 		cmd := exec.Command("make", "uninstall")
+		if dir := gitRepoDir(); dir != "" {
+			cmd.Dir = dir
+		}
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return uninstallResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
@@ -1299,11 +1342,9 @@ func (m Model) updateReport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.err = t(m.lang, "report_empty")
 			return m, nil
 		}
-		m.err = ""
-		m.loading = true
 		desc := description
 		errd := strings.TrimSpace(m.reportErr.Value())
-		return m, m.submitIssue(desc, errd)
+		return m.runOp(m.submitIssue(desc, errd))
 	}
 
 	if m.reportFocus == 0 {
@@ -1366,9 +1407,6 @@ func (m Model) startCalculation() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.loading = true
-	m.err = ""
-
 	groups := make([]calc.PassengerGroup, len(m.config.PassengerGroups))
 	for i, g := range m.config.PassengerGroups {
 		groups[i] = calc.PassengerGroup{
@@ -1386,7 +1424,7 @@ func (m Model) startCalculation() (tea.Model, tea.Cmd) {
 	grps := groups
 	mode := m.routeMode
 
-	return m, func() tea.Msg {
+	return m.runOp(func() tea.Msg {
 		route, err := routing.CalculateRoute(start, end, mode)
 		if err != nil {
 			return routeErrMsg{err: err}
@@ -1404,7 +1442,7 @@ func (m Model) startCalculation() (tea.Model, tea.Cmd) {
 			start:  start,
 			end:    end,
 		}
-	}
+	})
 }
 
 func (m Model) saveSetup() (tea.Model, tea.Cmd) {
@@ -1863,14 +1901,17 @@ func (m Model) viewBranch() string {
 	if len(m.branchList) > 0 {
 		b.WriteString(t(m.lang, "branch_list") + "\n\n")
 		for i, branch := range m.branchList {
-			prefix := "  "
+			line := "  " + branch
 			if branch == m.currentBranch {
-				prefix = "  " + successStyle.Render("* ")
+				line = "  * " + branch
 			}
 			if i == m.branchIdx && branch != m.currentBranch {
-				b.WriteString(prefix + successStyle.Render("▸ "+branch) + "\n")
+				line = "  ▸ " + branch
+			}
+			if i == m.branchIdx || branch == m.currentBranch {
+				b.WriteString(successStyle.Render(line) + "\n")
 			} else {
-				b.WriteString(prefix + helpStyle.Render(branch) + "\n")
+				b.WriteString(helpStyle.Render(line) + "\n")
 			}
 		}
 		b.WriteString("\n")

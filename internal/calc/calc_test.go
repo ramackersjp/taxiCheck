@@ -122,6 +122,19 @@ func TestCalculateDefaultGroup(t *testing.T) {
 	}
 }
 
+func TestSelectGroupReadmeNames(t *testing.T) {
+	groups := []PassengerGroup{
+		{Name: "Taxi auto (max. 4 personen)", BoardFee: 4.31, PerKm: 3.17, PerMinute: 0.52, WaitMinute: 59.41},
+		{Name: "Taxi bus (5-8 personen)", BoardFee: 8.77, PerKm: 4.00, PerMinute: 0.59, WaitMinute: 59.41},
+	}
+	if g := selectGroup(2, groups); g.Name != groups[0].Name {
+		t.Fatalf("2 passengers: got %q", g.Name)
+	}
+	if g := selectGroup(6, groups); g.Name != groups[1].Name {
+		t.Fatalf("6 passengers: got %q", g.Name)
+	}
+}
+
 func TestSelectGroup(t *testing.T) {
 	groups := []PassengerGroup{
 		{Name: "Taxi auto (max 4)", BoardFee: 4.31, PerKm: 3.17, PerMinute: 0.52, WaitMinute: 59.41},

@@ -168,6 +168,76 @@ func TestGeocodePrefersPdok(t *testing.T) {
 	}
 }
 
+func TestPdokMatchesQuery(t *testing.T) {
+	if !pdokMatchesQuery("Dam, Amsterdam", "Dam, Amsterdam") {
+		t.Fatal("exact city+street must match")
+	}
+	if pdokMatchesQuery("Centraal Station, Rotterdam", "Metrostation Centraal Station, Amsterdam") {
+		t.Fatal("must not accept an Amsterdam hit for a Rotterdam query")
+	}
+	if pdokMatchesQuery("Centraal Station, Rotterdam", "Centraal Busstation, Breda") {
+		t.Fatal("must not accept Breda for Rotterdam")
+	}
+	if !pdokMatchesQuery("Stationsplein Rotterdam", "Stationsplein, Rotterdam") {
+		t.Fatal("token order and punctuation must not matter")
+	}
+}
+
+func TestGeocodeRejectsWrongCityPdokHit(t *testing.T) {
+	LoadEnv()
+
+	pdok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, `{"response":{"docs":[{"weergavenaam":"Metrostation Centraal Station, Amsterdam","centroide_ll":"POINT(4.89985889 52.37816541)"}]}}`)
+	}))
+	defer pdok.Close()
+
+	nominatim := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, `[{"display_name":"Rotterdam Centraal","lat":"51.9250","lon":"4.4692"}]`)
+	}))
+	defer nominatim.Close()
+
+	oldPdok, oldNom := pdokURL, nominatimURL
+	pdokURL = pdok.URL
+	nominatimURL = nominatim.URL
+	lastNominatim = time.Time{}
+	defer func() {
+		pdokURL = oldPdok
+		nominatimURL = oldNom
+	}()
+
+	lat, lon, err := Geocode("Centraal Station, Rotterdam")
+	if err != nil {
+		t.Fatalf("geocode: %v", err)
+	}
+	if lat < 51.9 || lat > 51.95 || lon < 4.46 || lon > 4.48 {
+		t.Fatalf("expected Rotterdam Centraal, got lat=%f lon=%f", lat, lon)
+	}
+}
+
+func TestLiveAmsterdamToRotterdamRoute(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping live network test")
+	}
+	LoadEnv()
+	sugs, err := SuggestAddresses("Dam Amsterdam")
+	if err != nil {
+		t.Skipf("PDOK unavailable: %v", err)
+	}
+	if len(sugs) == 0 {
+		t.Skip("PDOK returned no suggestions")
+	}
+	route, err := CalculateRoute("Dam, Amsterdam", "Centraal Station, Rotterdam", "fastest")
+	if err != nil {
+		t.Skipf("live route unavailable: %v", err)
+	}
+	if route.DistanceKm < 40 || route.DistanceKm > 120 {
+		t.Fatalf("unexpected Amsterdam-Rotterdam distance: %.1f km", route.DistanceKm)
+	}
+	if route.DurationMin < 30 || route.DurationMin > 180 {
+		t.Fatalf("unexpected duration: %.0f min", route.DurationMin)
+	}
+}
+
 func TestGeocodeFallsBackToNominatim(t *testing.T) {
 	LoadEnv()
 
