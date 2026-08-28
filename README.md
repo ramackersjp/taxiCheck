@@ -4,9 +4,9 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 
 ## Features
 
-- Real-time route calculation via OpenStreetMap (OSRM + Nominatim)
+- Real-time route calculation via OpenStreetMap (OSRM) with Dutch address lookup via PDOK
 - Address-based fare calculation within the Netherlands
-- Live address suggestions while typing (Nominatim, rate-limited to 1 req/s, cached for the session)
+- Live address suggestions while typing (PDOK Locatieserver, cached for the session)
 - Fastest or shortest route mode (toggle with F2)
 - Support for two passenger groups: Taxi auto (max. 4) and Taxi bus (5-8)
 - Configurable pricing: board fee, per km rate, per minute rate
@@ -214,8 +214,11 @@ Copy `.env.example` to `.env` and configure if needed:
 # OSRM routing API (default: public demo server)
 OSRM_URL=https://router.project-osrm.org
 
-# Nominatim geocoding API (default: OpenStreetMap)
+# Nominatim geocoding API (fallback; default: OpenStreetMap)
 NOMINATIM_URL=https://nominatim.openstreetmap.org
+
+# PDOK Locatieserver (address suggestions + primary geocoding)
+PDOK_URL=https://api.pdok.nl/bzk/locatieserver/search/v3_1
 
 # User agent for API requests (required by Nominatim)
 USER_AGENT=TaxiCheck/1.0
@@ -276,15 +279,17 @@ fare = board_fee + (distance_km × per_km) + (duration_min × per_minute)
 
 ## API
 
-The application uses two OpenStreetMap APIs:
+The application uses:
 
-- **Nominatim** - Geocoding (converting addresses to coordinates)
+- **PDOK Locatieserver** - Live address suggestions and primary geocoding (Dutch BAG)
+- **Nominatim** - Geocoding fallback (converting addresses to coordinates)
 - **OSRM** - Routing (calculating distance and duration between coordinates)
 
-- All addresses are limited to the Netherlands (Nominatim `countrycodes=nl`).
-- Nominatim requests are limited to 1 per second (rate limiter).
-- Geocoding retries up to 3 times, waiting 2s on HTTP 429.
-- The `USER_AGENT` from `.env` is sent on every request (required by the Nominatim usage policy).
+- All addresses are limited to the Netherlands.
+- Address suggestions do not use Nominatim, so typing is not blocked by the 1 request/second cap.
+- Nominatim (fallback geocoding only) is limited to 1 request per second.
+- Nominatim geocoding retries up to 3 times, waiting 2s on HTTP 429, without a "too many requests" message.
+- The `USER_AGENT` from `.env` is sent on every request.
 
 ## Manual
 
@@ -321,7 +326,7 @@ taxiprijs/
 │   │   ├── issue.go             # Report issue: local log + GitHub via gh CLI
 │   │   └── issue_test.go        # Unit tests
 │   ├── routing/
-│   │   └── routing.go           # OSRM + Nominatim API client
+│   │   └── routing.go           # OSRM + PDOK + Nominatim API client
 │   └── tui/
 │       ├── model.go             # Bubble Tea TUI
 │       ├── style.go             # Lip Gloss styling

@@ -81,11 +81,14 @@ type routeErrMsg struct {
 	err error
 }
 
-type tickMsg time.Time
+type tickMsg struct {
+	gen int
+}
 
 type suggestMsg struct {
 	inputIdx int
 	query    string
+	gen      int
 	suggests []routing.AddressSuggestion
 	err      error
 }
@@ -150,6 +153,7 @@ type Model struct {
 
 	suggestFetching bool
 	suggestPending  bool
+	suggestGen      int
 
 	latestTag       string
 	hasUpdate       bool
@@ -287,10 +291,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err.Error()
 		return m, nil
 	case tickMsg:
+		if msg.gen != m.suggestGen {
+			return m, nil
+		}
 		return m.startSuggestionFetch()
 	case suggestMsg:
 		m.suggestFetching = false
-		if msg.inputIdx == m.suggestInput && m.lastInputVal == msg.query && msg.err == nil {
+		if msg.gen == m.suggestGen && msg.inputIdx == m.suggestInput && msg.err == nil {
 			m.suggestions = msg.suggests
 			m.suggestionIdx = 0
 			m.showSuggest = len(msg.suggests) > 0
@@ -427,6 +434,7 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focusIdx = 0
 		m.suggestFetching = false
 		m.suggestPending = false
+		m.suggestGen++
 		return m, textinput.Blink
 	case "2":
 		m.screen = screenSettings
@@ -765,8 +773,8 @@ func (m Model) updateUninstall(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // startSuggestionFetch fires a single request for the current address field.
-// While one is in flight no new request is started (Nominatim allows one per
-// second); latest-typed input is picked up again when the result arrives.
+// While one is in flight no new request is started; input typed in the
+// meantime is fetched as soon as the in-flight result arrives.
 func (m Model) startSuggestionFetch() (tea.Model, tea.Cmd) {
 	if m.focusIdx > 1 || len(m.inputs) < 2 || m.suggestFetching {
 		return m, nil
@@ -777,9 +785,10 @@ func (m Model) startSuggestionFetch() (tea.Model, tea.Cmd) {
 	}
 	m.suggestFetching = true
 	inputIdx := m.focusIdx
+	gen := m.suggestGen
 	return m, func() tea.Msg {
 		suggests, err := routing.SuggestAddresses(q)
-		return suggestMsg{inputIdx: inputIdx, query: q, suggests: suggests, err: err}
+		return suggestMsg{inputIdx: inputIdx, query: q, gen: gen, suggests: suggests, err: err}
 	}
 }
 
@@ -842,6 +851,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showSuggest = false
 		m.suggestFetching = false
 		m.suggestPending = false
+		m.suggestGen++
 		return m, textinput.Blink
 	case "enter":
 		if m.showSuggest && m.suggestionIdx < len(m.suggestions) {
@@ -849,6 +859,9 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputs[m.focusIdx].SetValue(sel.Display)
 			m.showSuggest = false
 			m.suggestions = nil
+			m.suggestFetching = false
+			m.suggestPending = false
+			m.suggestGen++
 			return m, nil
 		}
 		return m.startCalculation()
@@ -856,12 +869,14 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.showSuggest {
 			m.showSuggest = false
 			m.suggestions = nil
+			m.suggestGen++
 			return m, nil
 		}
 		m.screen = screenMain
 		m.err = ""
 		m.suggestFetching = false
 		m.suggestPending = false
+		m.suggestGen++
 		return m, nil
 	case "tab", "shift+tab":
 		m.showSuggest = false
@@ -878,6 +893,7 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.inputs[m.focusIdx].Focus()
 		m.suggestFetching = false
 		m.suggestPending = false
+		m.suggestGen++
 		return m, textinput.Blink
 	}
 
@@ -888,9 +904,10 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			newVal := m.inputs[i].Value()
 			if i < 2 && newVal != oldVal {
 				m.suggestInput = i
+				m.suggestGen++
 				if len(newVal) >= 2 {
-					// Give instant feedback by narrowing the current list
-					// while the (rate-limited) fetch runs in the background.
+					// Instant feedback by narrowing the current list while
+					// the debounced PDOK request runs in the background.
 					if len(m.lastInputVal) >= 2 {
 						m.narrowSuggestions(m.lastInputVal, newVal)
 					}
@@ -899,8 +916,9 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						m.suggestPending = true
 						return m, nil
 					}
-					return m, tea.Tick(150*time.Millisecond, func(t time.Time) tea.Msg {
-						return tickMsg(t)
+					gen := m.suggestGen
+					return m, tea.Tick(120*time.Millisecond, func(t time.Time) tea.Msg {
+						return tickMsg{gen: gen}
 					})
 				}
 				m.lastInputVal = newVal
@@ -937,6 +955,7 @@ func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focusIdx = 0
 		m.suggestFetching = false
 		m.suggestPending = false
+		m.suggestGen++
 		return m, textinput.Blink
 	}
 	return m, nil

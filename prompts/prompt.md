@@ -1,7 +1,7 @@
 # TaxiCheck Project Knowledge
 
 ## Project Purpose
-Dutch taxi fare calculator TUI application built with Go and Bubble Tea. Uses OpenStreetMap (OSRM + Nominatim) for real-time route calculation within the Netherlands.
+Dutch taxi fare calculator TUI application built with Go and Bubble Tea. Uses PDOK Locatieserver for Dutch address suggestions, Nominatim as a geocoding fallback, and OSRM for real-time route calculation within the Netherlands.
 
 ## Current State
 - Initial implementation complete
@@ -18,7 +18,8 @@ Dutch taxi fare calculator TUI application built with Go and Bubble Tea. Uses Op
 - go-toml/v2 (TOML configuration)
 - godotenv (.env configuration)
 - OSRM (Open Source Routing Machine) for route calculation
-- Nominatim (OpenStreetMap) for address geocoding
+- PDOK Locatieserver for address autocomplete (and primary geocoding)
+- Nominatim (OpenStreetMap) as geocoding fallback
 
 ## Architecture
 ```
@@ -29,7 +30,7 @@ taxiprijs/
 │   ├── config/config.go           # TOML configuration
 │   ├── issue/issue.go             # Report issue: local log + GitHub via gh
 │   ├── issue/issue_test.go        # Unit tests
-│   ├── routing/routing.go         # OSRM + Nominatim API client
+│   ├── routing/routing.go         # OSRM + PDOK + Nominatim API client
 │   └── tui/                       # Bubble Tea TUI
 │       ├── model.go               # Main model with all screens
 │       ├── style.go               # Lip Gloss styling
@@ -75,10 +76,11 @@ taxiprijs/
 - Language setting (en/nl) stored in config
 
 ## API Configuration
-- `.env` file with OSRM_URL, NOMINATIM_URL, USER_AGENT
+- `.env` file with OSRM_URL, NOMINATIM_URL, PDOK_URL, USER_AGENT
 - OSRM public demo server used by default
-- Nominatim used for geocoding (address -> coordinates)
-- All addresses limited to Netherlands (countrycodes=nl)
+- PDOK Locatieserver used for live address suggestions and primary geocoding
+- Nominatim used as geocoding fallback (address -> coordinates)
+- All addresses limited to the Netherlands
 
 ## TUI Screens
 1. Main Menu - Navigation hub with version display
@@ -117,7 +119,7 @@ taxiprijs/
 3. Enter start address (e.g. "Dam Square, Amsterdam")
 4. Enter destination (e.g. "Central Station, Rotterdam")
 5. Enter number of passengers (1-8)
-6. App geocodes addresses via Nominatim
+6. App geocodes addresses via PDOK (Nominatim fallback)
 7. App calculates route via OSRM
 8. App calculates fare using configured pricing
 9. Result shows route details + total price
@@ -157,7 +159,9 @@ taxiprijs/
 - github.com/joho/godotenv
 
 ## API Endpoints
-- Nominatim: https://nominatim.openstreetmap.org/search (geocoding)
+- PDOK Locatieserver: https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest (address autocomplete)
+- PDOK Locatieserver: https://api.pdok.nl/bzk/locatieserver/search/v3_1/free (primary geocoding)
+- Nominatim: https://nominatim.openstreetmap.org/search (geocoding fallback)
 - OSRM: https://router.project-osrm.org/route/v1/driving/ (routing)
 
 ## Important Constraints
@@ -166,9 +170,11 @@ taxiprijs/
 - Requires internet connection for route calculation
 - No telemetry or tracking
 - Configuration must be human-editable
-- Nominatim rate limit: max 1 request per second (enforced by rate limiter)
-- Rate limiter holds mutex during sleep to prevent concurrent requests
-- Address suggestions use retry logic (max 3 attempts) with 2s wait on 429
+- Address suggestions use PDOK Locatieserver (no Nominatim 1 req/s cap), cached for the session
+- Suggestion failures are silent: no error/valid/invalid/rate-limit message while typing
+- Nominatim is only used as a geocoding fallback and is still limited to 1 request per second
+- Rate limiter holds mutex during sleep to prevent concurrent Nominatim requests
+- Geocoding retries Nominatim up to 3 times, waiting 2s on 429, with no "too many requests" wording
 
 ## Current Features
 - Real-time route calculation via OpenStreetMap
@@ -183,7 +189,7 @@ taxiprijs/
 - Keyboard-only navigation
 - English and Dutch language support
 - Fastest/shortest route mode toggle (press F2 on calc screen)
-- Address suggestions while typing (Nominatim, rate-limited to 1 req/s, cached for the session)
+- Address suggestions while typing (PDOK Locatieserver, cached for the session, silent on failure)
 - Version display in main menu
 - Check for updates from GitHub
 - Pull updates via git pull from the TUI (the binary is rebuilt and installed automatically)
