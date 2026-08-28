@@ -59,7 +59,7 @@ Use `git branch --show-current` to confirm you are on the stable branch.
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.27 or later (as required by go.mod)
 - Internet connection (for route calculation via OpenStreetMap)
 - Git (for update and branch features)
 - `make` (only needed for `make install` / `make uninstall`)
