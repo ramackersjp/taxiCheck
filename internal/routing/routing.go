@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,9 +22,12 @@ type RouteResult struct {
 	DurationMin float64
 }
 
+const defaultPdokURL = "https://api.pdok.nl/bzk/locatieserver/search/v3_1"
+
 var (
 	osrmURL       string
 	nominatimURL  string
+	pdokURL       string
 	userAgent     string
 	httpClient    = &http.Client{Timeout: 15 * time.Second}
 	loaded        bool
@@ -54,6 +58,12 @@ func LoadEnv() {
 	nominatimURL = os.Getenv("NOMINATIM_URL")
 	if nominatimURL == "" {
 		nominatimURL = "https://nominatim.openstreetmap.org"
+	}
+
+	if v := os.Getenv("PDOK_URL"); v != "" {
+		pdokURL = v
+	} else if pdokURL == "" {
+		pdokURL = defaultPdokURL
 	}
 
 	userAgent = os.Getenv("USER_AGENT")
@@ -99,6 +109,14 @@ type osrmResponse struct {
 func Geocode(address string) (float64, float64, error) {
 	LoadEnv()
 
+	if lat, lon, err := geocodePdok(address); err == nil {
+		return lat, lon, nil
+	}
+
+	return geocodeNominatim(address)
+}
+
+func geocodeNominatim(address string) (float64, float64, error) {
 	query := address + ", Netherlands"
 	params := url.Values{
 		"q":            {query},
@@ -126,7 +144,7 @@ func Geocode(address string) (float64, float64, error) {
 
 		if resp.StatusCode == 429 {
 			resp.Body.Close()
-			lastErr = fmt.Errorf("Te veel verzoeken naar Nominatim, probeer opnieuw")
+			lastErr = fmt.Errorf("address lookup temporarily unavailable, try again")
 			time.Sleep(2 * time.Second)
 			continue
 		}
@@ -253,76 +271,178 @@ func CalculateRoute(startAddress, endAddress string, mode string) (*RouteResult,
 func SuggestAddresses(query string) ([]AddressSuggestion, error) {
 	LoadEnv()
 
-	if len(strings.TrimSpace(query)) < 2 {
+	q := strings.TrimSpace(query)
+	if len(q) < 2 {
 		return nil, nil
 	}
 
+	if res, ok := cachedSuggestions(q); ok {
+		return res, nil
+	}
+
 	params := url.Values{
-		"q":            {query + ", Netherlands"},
-		"format":       {"json"},
-		"limit":        {"5"},
-		"countrycodes": {"nl"},
+		"q":    {q},
+		"rows": {"10"},
 	}
 
-	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
-		reqURL := fmt.Sprintf("%s/search?%s", nominatimURL, params.Encode())
-		req, err := http.NewRequest("GET", reqURL, nil)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("User-Agent", userAgent)
+	// PDOK Locatieserver /suggest is built for autocomplete and is not bound
+	// by Nominatim's 1 request/second policy, so typing can keep getting
+	// addresses. Failures are silent: the TUI keeps the previous list.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
+	reqURL := fmt.Sprintf("%s/suggest?%s", pdokBase(), params.Encode())
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, nil
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/json")
 
-		if resp.StatusCode == 429 {
-			resp.Body.Close()
-			lastErr = fmt.Errorf("rate limited by Nominatim")
-			time.Sleep(2 * time.Second)
-			continue
-		}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, nil
+	}
+	defer resp.Body.Close()
 
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		resp.Body.Close()
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		if resp.StatusCode != 200 {
-			lastErr = fmt.Errorf("Nominatim returned status %d", resp.StatusCode)
-			continue
-		}
-
-		var results []nominatimResult
-		if err := json.Unmarshal(body, &results); err != nil {
-			lastErr = err
-			continue
-		}
-
-		var suggestions []AddressSuggestion
-		for _, r := range results {
-			lat, err := strconv.ParseFloat(r.Lat, 64)
-			if err != nil {
-				continue
-			}
-			lon, err := strconv.ParseFloat(r.Lon, 64)
-			if err != nil {
-				continue
-			}
-			suggestions = append(suggestions, AddressSuggestion{
-				Display: r.DisplayName,
-				Lat:     lat,
-				Lon:     lon,
-			})
-		}
-
-		return suggestions, nil
+	if resp.StatusCode != 200 {
+		return nil, nil
 	}
 
-	return nil, lastErr
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, nil
+	}
+
+	suggestions := parsePdokDocs(body)
+	storeSuggestions(q, suggestions)
+	return suggestions, nil
+}
+
+func geocodePdok(address string) (float64, float64, error) {
+	q := strings.TrimSpace(address)
+	if q == "" {
+		return 0, 0, fmt.Errorf("empty address")
+	}
+
+	params := url.Values{
+		"q":    {q},
+		"rows": {"5"},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	reqURL := fmt.Sprintf("%s/free?%s", pdokBase(), params.Encode())
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return 0, 0, fmt.Errorf("pdok returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	for _, s := range parsePdokDocs(body) {
+		if s.Lat != 0 || s.Lon != 0 {
+			return s.Lat, s.Lon, nil
+		}
+	}
+	return 0, 0, fmt.Errorf("address not found: %s", address)
+}
+
+func pdokBase() string {
+	if pdokURL != "" {
+		return pdokURL
+	}
+	return defaultPdokURL
+}
+
+type pdokResponse struct {
+	Response struct {
+		Docs []pdokDoc `json:"docs"`
+	} `json:"response"`
+}
+
+type pdokDoc struct {
+	Weergavenaam string `json:"weergavenaam"`
+	CentroideLL  string `json:"centroide_ll"`
+}
+
+func parsePdokDocs(body []byte) []AddressSuggestion {
+	var parsed pdokResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return nil
+	}
+	var suggestions []AddressSuggestion
+	for _, d := range parsed.Response.Docs {
+		if strings.TrimSpace(d.Weergavenaam) == "" {
+			continue
+		}
+		s := AddressSuggestion{Display: d.Weergavenaam}
+		if lat, lon, ok := parsePointLL(d.CentroideLL); ok {
+			s.Lat = lat
+			s.Lon = lon
+		}
+		suggestions = append(suggestions, s)
+	}
+	return suggestions
+}
+
+// parsePointLL reads a WKT POINT(lon lat) used by PDOK.
+func parsePointLL(s string) (lat, lon float64, ok bool) {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "POINT(")
+	s = strings.TrimSuffix(s, ")")
+	parts := strings.Fields(s)
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	lon, err1 := strconv.ParseFloat(parts[0], 64)
+	lat, err2 := strconv.ParseFloat(parts[1], 64)
+	if err1 != nil || err2 != nil {
+		return 0, 0, false
+	}
+	return lat, lon, true
+}
+
+var (
+	suggestCacheMu sync.Mutex
+	suggestCache   = map[string][]AddressSuggestion{}
+)
+
+// cachedSuggestions returns the last fetched results for a query, so repeats
+// (e.g. backtracking while typing) are answered instantly without a request.
+func cachedSuggestions(q string) ([]AddressSuggestion, bool) {
+	suggestCacheMu.Lock()
+	defer suggestCacheMu.Unlock()
+	res, ok := suggestCache[strings.ToLower(strings.TrimSpace(q))]
+	return res, ok
+}
+
+// storeSuggestions records results for a query, evicting one entry
+// when the cache grows too large.
+func storeSuggestions(q string, res []AddressSuggestion) {
+	suggestCacheMu.Lock()
+	defer suggestCacheMu.Unlock()
+	if len(suggestCache) >= 300 {
+		for k := range suggestCache {
+			delete(suggestCache, k)
+			break
+		}
+	}
+	suggestCache[strings.ToLower(strings.TrimSpace(q))] = res
 }
