@@ -106,14 +106,14 @@ var translations = map[string]map[string]string{
 		"update_up_to_date":   "You are running the latest version",
 		"update_pull":         " Pull update (git pull)",
 		"update_recheck":      " Re-check for updates",
-		"update_reinstall":    " Rebuild binary and run make install (incl. Omarchy QML)",
+		"update_reinstall":    " Install latest version",
 		"update_reinstall_ok": "Binary rebuilt and installed (make install).",
 		"update_success":      "Update pulled successfully!",
 		"update_rebuild_fail": "Update pulled, but the app could not be rebuilt.",
 		"update_install_fail": "Update pulled, but the new binary could not be installed.",
 		"update_restart":      "Restart the app to run the new version.",
 		"update_no_repo":      "Could not find the source repository to update.",
-		"update_help":         "Esc/Enter: back | u: pull update | r: re-check | F3: rebuild+install",
+		"update_help":         "Esc/Enter: back | u: pull update | R: re-check | F3: install latest version",
 
 		// Branch
 		"branch_title":          "Switch Branch",
@@ -267,14 +267,14 @@ var translations = map[string]map[string]string{
 		"update_up_to_date":   "Je draait de nieuwste versie",
 		"update_pull":         " Update ophalen (git pull)",
 		"update_recheck":      " Opnieuw controleren",
-		"update_reinstall":    " Binary opnieuw bouwen en make install (incl. Omarchy QML)",
+		"update_reinstall":    " Installeer nieuwste versie",
 		"update_reinstall_ok": "Binary opnieuw gebouwd en geïnstalleerd (make install).",
 		"update_success":      "Update succesvol opgehaald!",
 		"update_rebuild_fail": "Update opgehaald, maar de app kon niet opnieuw worden gebouwd.",
 		"update_install_fail": "Update opgehaald, maar de nieuwe binary kon niet worden geïnstalleerd.",
 		"update_restart":      "Herstart de app om de nieuwe versie te gebruiken.",
 		"update_no_repo":      "Kon de bronrepository niet vinden om te updaten.",
-		"update_help":         "Esc/Enter: terug | u: update ophalen | r: opnieuw controleren | F3: herbouw+install",
+		"update_help":         "Esc/Enter: terug | u: update ophalen | R: opnieuw controleren | F3: installeer nieuwste versie",
 
 		// Branch
 		"branch_title":          "Wissel Branch",
