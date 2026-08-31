@@ -8,7 +8,30 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/ramackersjp/taxiCheck/internal/wininstall"
 )
+
+// Overridable so tests can simulate Windows install paths.
+var currentGOOS = runtime.GOOS
+
+func binName() string {
+	if currentGOOS == "windows" {
+		return wininstall.BinName
+	}
+	return installedBinName
+}
+
+func userInstallBin() string {
+	if currentGOOS == "windows" {
+		return wininstall.UserInstallBin()
+	}
+	home, err := osUserHome()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".local", "bin", binName())
+}
 
 const (
 	sourceRepoFile   = "source-repo"
@@ -246,10 +269,37 @@ func goBinary() string {
 	if p, err := exec.LookPath("go"); err == nil {
 		return p
 	}
-	for _, p := range []string{"/usr/bin/go", "/usr/local/go/bin/go", "/usr/lib/go/bin/go"} {
+	if currentGOOS == "windows" {
+		if p, err := exec.LookPath("go.exe"); err == nil {
+			return p
+		}
+	}
+	var candidates []string
+	if home, err := osUserHome(); err == nil && home != "" {
+		candidates = append(candidates,
+			filepath.Join(home, "go", "bin", "go"),
+			filepath.Join(home, "go", "bin", "go.exe"),
+			filepath.Join(home, "sdk", "go", "bin", "go.exe"),
+		)
+	}
+	if pf := os.Getenv("ProgramFiles"); pf != "" {
+		candidates = append(candidates, filepath.Join(pf, "Go", "bin", "go.exe"))
+	}
+	if local := os.Getenv("LOCALAPPDATA"); local != "" {
+		candidates = append(candidates, filepath.Join(local, "Programs", "Go", "bin", "go.exe"))
+	}
+	candidates = append(candidates,
+		"/usr/bin/go",
+		"/usr/local/go/bin/go",
+		"/usr/lib/go/bin/go",
+	)
+	for _, p := range candidates {
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
 			return p
 		}
+	}
+	if currentGOOS == "windows" {
+		return "go.exe"
 	}
 	return "go"
 }
@@ -434,8 +484,8 @@ func copyRegular(src, dst string) error {
 // ETXTBSY ("text file busy") — that is how the Omarchy widget launches this
 // app — so the temp+rename path is required for in-app updates.
 func rebuildBinary(dir string) (string, error) {
-	dest := filepath.Join(dir, installedBinName)
-	tmp, err := os.CreateTemp(dir, ".taxiprijs-build-*")
+	dest := filepath.Join(dir, binName())
+	tmp, err := os.CreateTemp(dir, ".taxiprijs-build-*.tmp")
 	if err != nil {
 		return "", err
 	}
@@ -443,6 +493,12 @@ func rebuildBinary(dir string) (string, error) {
 	if err := tmp.Close(); err != nil {
 		os.Remove(tmpName)
 		return "", err
+	}
+	_ = os.Remove(tmpName)
+	// Go on Windows appends .exe when -o has no extension, writing a
+	// different file than the one we then copy.
+	if currentGOOS == "windows" {
+		tmpName = strings.TrimSuffix(tmpName, filepath.Ext(tmpName)) + ".exe"
 	}
 	defer os.Remove(tmpName)
 
@@ -492,25 +548,25 @@ func installDest(src, dest string) error {
 }
 
 // installBinary places the freshly built binary on every path the user might
-// launch: the running executable, ~/.local/bin (PATH), and /usr/local/bin
-// (make install / desktop entry) when writable or via passwordless sudo.
+// launch. The running executable is updated first so F3/pull actually
+// replaces the Windows install.exe copy in %LOCALAPPDATA%\TaxiCheck.
 func installBinary(builtPath, repoDir string) error {
 	if _, err := os.Stat(builtPath); err != nil {
 		return err
 	}
 	builtAbs := absClean(builtPath)
-
-	localBin := ""
-	if home, err := osUserHome(); err == nil && home != "" {
-		localBin = absClean(filepath.Join(home, ".local", "bin", installedBinName))
-	}
 	running := runningExecutable()
-	systemBin := absClean(systemInstallPath)
+	userBin := absClean(userInstallBin())
+	systemBin := ""
+	if currentGOOS != "windows" {
+		systemBin = absClean(systemInstallPath)
+	}
 
 	var firstErr error
+	var installed bool
 	try := func(dest string) bool {
 		if dest == "" || dest == builtAbs {
-			return dest != ""
+			return false
 		}
 		if err := installDest(builtPath, dest); err != nil {
 			if firstErr == nil {
@@ -518,25 +574,33 @@ func installBinary(builtPath, repoDir string) error {
 			}
 			return false
 		}
+		installed = true
 		return true
 	}
 
-	// ~/.local/bin is what `taxiprijs` on PATH resolves to for this user.
-	localOK := localBin == "" || try(localBin)
-	if running != "" && running != localBin {
-		_ = try(running)
-	}
-	if systemBin != running && systemBin != localBin {
+	// The launched binary must be replaced or a restart still runs the old one.
+	runningOK := running == "" || running == builtAbs || try(running)
+	userOK := userBin == "" || userBin == running || try(userBin)
+	if systemBin != "" && systemBin != running && systemBin != userBin {
 		_ = try(systemBin)
 	}
 
-	if !localOK {
+	if running != "" && running != builtAbs {
+		if runningOK {
+			return nil
+		}
 		if firstErr != nil {
 			return firstErr
 		}
-		return fmt.Errorf("could not install the new binary")
+		return fmt.Errorf("could not replace the running binary")
 	}
-	return nil
+	if userOK || installed {
+		return nil
+	}
+	if firstErr != nil {
+		return firstErr
+	}
+	return fmt.Errorf("could not install the new binary")
 }
 
 // copyFile copies src to dst and makes dst executable. The destination is
@@ -587,5 +651,19 @@ func replaceFile(src, dst string) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmpName, dstAbs)
+	if err := os.Rename(tmpName, dstAbs); err == nil {
+		return nil
+	}
+	// Windows cannot overwrite a running .exe, but it can rename it.
+	old := dstAbs + ".old"
+	_ = os.Remove(old)
+	if err := os.Rename(dstAbs, old); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, dstAbs); err != nil {
+		_ = os.Rename(old, dstAbs)
+		return err
+	}
+	_ = os.Remove(old)
+	return nil
 }

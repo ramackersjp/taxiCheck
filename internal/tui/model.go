@@ -1336,13 +1336,8 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 
 func (m Model) runUninstall() tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("make", "uninstall")
-		if dir := gitRepoDir(); dir != "" {
-			cmd.Dir = dir
-		}
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return uninstallResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
+		if err := uninstallApp(); err != nil {
+			return uninstallResultMsg{err: err}
 		}
 		return uninstallResultMsg{success: true}
 	}
