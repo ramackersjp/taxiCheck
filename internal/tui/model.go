@@ -369,6 +369,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
+	case tea.MouseMsg:
+		return m.handleMouse(msg)
 	case routeMsg:
 		m.loading = false
 		m.result = msg.result
@@ -1817,6 +1819,7 @@ func (m Model) viewHelp() string {
 	b.WriteString("  " + keyStyle.Render("Tab") + t(m.lang, "help_tab") + "\n")
 	b.WriteString("  " + keyStyle.Render("Enter") + t(m.lang, "help_enter") + "\n")
 	b.WriteString("  " + keyStyle.Render("Esc") + t(m.lang, "help_esc") + "\n")
+	b.WriteString("  " + t(m.lang, "help_mouse") + "\n")
 	b.WriteString("\n")
 	b.WriteString(t(m.lang, "help_config_title") + "\n")
 	b.WriteString(t(m.lang, "help_config_path") + "\n")
