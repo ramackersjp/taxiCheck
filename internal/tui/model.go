@@ -21,6 +21,7 @@ import (
 	"github.com/ramackersjp/taxiCheck/internal/config"
 	"github.com/ramackersjp/taxiCheck/internal/issue"
 	"github.com/ramackersjp/taxiCheck/internal/routing"
+	"github.com/ramackersjp/taxiCheck/internal/tools"
 )
 
 type screen int
@@ -273,6 +274,7 @@ type Model struct {
 	reportResult    string
 	reportSubmitted bool
 	opGen           int
+	tools           tools.Status
 }
 
 func NewModel() Model {
@@ -494,6 +496,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		m.renderReportResult(msg.res)
 		return m, nil
+	case toolsStatusMsg:
+		m.tools = msg.status
+		return m, nil
+	case toolsResultMsg:
+		m.loading = false
+		if msg.err != nil {
+			m.err = msg.err.Error()
+		} else {
+			m.err = ""
+		}
+		return m, m.refreshTools()
 	}
 
 	return m, nil
@@ -519,9 +532,9 @@ func (m Model) isTyping() bool {
 	case screenCalc:
 		return true
 	case screenSetup:
-		return m.setupStep != 0
+		return m.setupStep == stepPricing
 	case screenSettings:
-		return m.settingsStep != 0
+		return m.settingsStep == stepPricing
 	case screenReport:
 		return !m.reportSubmitted
 	}
@@ -656,21 +669,31 @@ func (m Model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case "esc":
-		if m.setupStep == 0 {
+		switch m.setupStep {
+		case stepLang:
 			m.screen = screenMain
 			m.err = ""
 			return m, nil
+		case stepPricing:
+			m.setupStep = stepTools
+			m.inputs = nil
+			m.err = ""
+			return m, m.refreshTools()
+		default:
+			m.setupStep = stepLang
+			m.err = ""
+			return m, nil
 		}
-		m.setupStep = 0
-		m.inputs = nil
-		m.err = ""
-		return m, nil
 	}
 
-	if m.setupStep == 0 {
+	switch m.setupStep {
+	case stepLang:
 		return m.updateSetupLang(msg)
+	case stepTools:
+		return m.updateTools(msg, true)
+	default:
+		return m.updateSetupPricing(msg)
 	}
-	return m.updateSetupPricing(msg)
 }
 
 func (m Model) updateSetupLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -687,37 +710,8 @@ func (m Model) updateSetupLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter":
 		m.config.Language = m.lang
-		m.setupStep = 1
-		m.inputs = make([]textinput.Model, len(m.config.PassengerGroups)*4)
-		pw := m.priceInputWidth()
-		j := 0
-		for _, g := range m.config.PassengerGroups {
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.BoardFee))
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerKm))
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerMinute))
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
-			j++
-		}
-		m.focusIdx = 0
-		if len(m.inputs) > 0 {
-			m.inputs[0].Focus()
-		}
-		return m, textinput.Blink
+		m.setupStep = stepTools
+		return m, m.refreshTools()
 	}
 	return m, nil
 }
@@ -755,21 +749,31 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case "esc":
-		if m.settingsStep == 0 {
+		switch m.settingsStep {
+		case stepLang:
 			m.screen = screenMain
 			m.err = ""
 			return m, nil
+		case stepPricing:
+			m.settingsStep = stepTools
+			m.inputs = nil
+			m.err = ""
+			return m, m.refreshTools()
+		default:
+			m.settingsStep = stepLang
+			m.err = ""
+			return m, nil
 		}
-		m.settingsStep = 0
-		m.inputs = nil
-		m.err = ""
-		return m, nil
 	}
 
-	if m.settingsStep == 0 {
+	switch m.settingsStep {
+	case stepLang:
 		return m.updateSettingsLang(msg)
+	case stepTools:
+		return m.updateTools(msg, false)
+	default:
+		return m.updateSettingsPricing(msg)
 	}
-	return m.updateSettingsPricing(msg)
 }
 
 func (m Model) updateSettingsLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -787,37 +791,8 @@ func (m Model) updateSettingsLang(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		m.lang = m.settingsLang
 		m.config.Language = m.lang
-		m.settingsStep = 1
-		m.inputs = make([]textinput.Model, len(m.config.PassengerGroups)*4)
-		pw := m.priceInputWidth()
-		j := 0
-		for _, g := range m.config.PassengerGroups {
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.BoardFee))
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerKm))
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.PerMinute))
-			j++
-			m.inputs[j] = textinput.New()
-			m.inputs[j].CharLimit = 10
-			m.inputs[j].Width = pw
-			m.inputs[j].SetValue(fmt.Sprintf("%.2f", g.WaitMinute))
-			j++
-		}
-		m.focusIdx = 0
-		if len(m.inputs) > 0 {
-			m.inputs[0].Focus()
-		}
-		return m, textinput.Blink
+		m.settingsStep = stepTools
+		return m, m.refreshTools()
 	}
 	return m, nil
 }
@@ -1742,7 +1717,7 @@ func (m Model) viewSetup() string {
 	b.WriteString(subtitleStyle.Render(t(m.lang, "setup_title")))
 	b.WriteString("\n\n")
 
-	if m.setupStep == 0 {
+	if m.setupStep == stepLang {
 		b.WriteString(titleStyle.Render(t(m.lang, "setup_lang_title")))
 		b.WriteString("\n\n")
 		b.WriteString(keyStyle.Render("1") + " " + t(m.lang, "setup_lang_en") + "\n")
@@ -1756,6 +1731,10 @@ func (m Model) viewSetup() string {
 		b.WriteString("\n")
 		b.WriteString(helpStyle.Render(t(m.lang, "setup_lang_help")))
 		return b.String()
+	}
+
+	if m.setupStep == stepTools {
+		return m.viewTools(true)
 	}
 
 	for i, g := range m.config.PassengerGroups {
@@ -1788,7 +1767,7 @@ func (m Model) viewSettings() string {
 	b.WriteString(subtitleStyle.Render(t(m.lang, "settings_title")))
 	b.WriteString("\n\n")
 
-	if m.settingsStep == 0 {
+	if m.settingsStep == stepLang {
 		b.WriteString(titleStyle.Render(t(m.lang, "settings_lang_title")))
 		b.WriteString("\n\n")
 		b.WriteString(keyStyle.Render("1") + " " + t(m.lang, "settings_lang_en") + "\n")
@@ -1802,6 +1781,10 @@ func (m Model) viewSettings() string {
 		b.WriteString("\n")
 		b.WriteString(helpStyle.Render(t(m.lang, "settings_lang_help")))
 		return b.String()
+	}
+
+	if m.settingsStep == stepTools {
+		return m.viewTools(false)
 	}
 
 	for i, g := range m.config.PassengerGroups {
@@ -1849,6 +1832,10 @@ func (m Model) viewHelp() string {
 	b.WriteString("  " + keyStyle.Render("Enter") + t(m.lang, "help_enter") + "\n")
 	b.WriteString("  " + keyStyle.Render("Esc") + t(m.lang, "help_esc") + "\n")
 	b.WriteString("  " + t(m.lang, "help_mouse") + "\n")
+	b.WriteString("\n")
+	b.WriteString(t(m.lang, "help_tools_title") + "\n")
+	b.WriteString(t(m.lang, "help_tools_1") + "\n")
+	b.WriteString(t(m.lang, "help_tools_2") + "\n")
 	b.WriteString("\n")
 	b.WriteString(t(m.lang, "help_config_title") + "\n")
 	b.WriteString(t(m.lang, "help_config_path") + "\n")

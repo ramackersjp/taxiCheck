@@ -32,6 +32,7 @@ taxiprijs/
 │   ├── issue/issue.go             # Report issue: local log + GitHub via gh
 │   ├── issue/issue_test.go        # Unit tests
 │   ├── routing/routing.go         # OSRM + PDOK + Nominatim API client
+│   ├── tools/                     # Install/detect Git, GitHub CLI, GitHub login
 │   ├── wininstall/                # Shared helpers for the Windows installer
 │   └── tui/                       # Bubble Tea TUI
 │       ├── model.go               # Main model with all screens
@@ -88,9 +89,9 @@ taxiprijs/
 ## TUI Screens
 1. Main Menu - Navigation hub with version display
 2. Calculate Fare - Enter start/destination address and passengers, API calculates route and price
-3. Settings - Modify pricing rates
+3. Settings - Language, Git/GitHub CLI/GitHub login (install + manage), then pricing rates
 4. Help/Manual - Keyboard controls and documentation
-5. Initial Setup - First-run: language selection + pricing configuration
+5. Initial Setup - First-run: language, optional Git/GitHub CLI/GitHub login (N skips), then pricing
 6. Result - Shows route info (distance, duration) and calculated fare
 7. Check for Updates - On stable branches compares the running version against the latest GitHub release; on dev compares the local branch with its remote (reports commits behind). Press `u` to pull, `r` to re-check
 8. Switch Branch - Switch between dev and stable branches (e.g. v1.1.0); local changes are stashed before the switch and restored after it
@@ -117,7 +118,7 @@ taxiprijs/
 - Default group used if no groups configured
 
 ## Workflow
-1. First run: Initial Setup (language + pricing)
+1. First run: Initial Setup (language + optional Git/gh/GitHub + pricing)
 2. Main menu: select "Calculate Fare"
 3. Enter start address (e.g. "Dam Square, Amsterdam")
 4. Enter destination (e.g. "Central Station, Rotterdam")
@@ -203,6 +204,7 @@ taxiprijs/
 - Two-step uninstall confirmation from the main menu
 - Omarchy Quattro bar widget installed by `make install` (launches the TUI from the bar)
 - Windows `install-taxicheck-vVERSION-windows.exe` on GitHub releases (user-level install to %LOCALAPPDATA%\TaxiCheck)
+- Settings and first-run setup can install Git, install GitHub CLI (gh), open GitHub signup, and log in with gh (N skips during setup)
 - Report Issue from the main menu (option 8): description + error output, saved to a local
   log at ~/.taxiprijs/logs/, and optionally filed on GitHub via the `gh` CLI. Works without
   gh/GitHub (falls back to local log only). Collects OS/distro/arch/kernel/Go info.

@@ -120,9 +120,10 @@ func TestSettingsPricingStartsAtFirstField(t *testing.T) {
 	m.inputs = make([]textinput.Model, 3)
 	var tm tea.Model = m
 	tm = press(tm, "2")     // settings
-	tm = press(tm, "enter") // language -> pricing
+	tm = press(tm, "enter") // language -> git/github tools
+	tm = press(tm, "enter") // tools -> pricing
 	mm := tm.(Model)
-	if mm.screen != screenSettings || mm.settingsStep != 1 {
+	if mm.screen != screenSettings || mm.settingsStep != stepPricing {
 		t.Fatalf("screen=%d step=%d", mm.screen, mm.settingsStep)
 	}
 	if mm.focusIdx != 0 {

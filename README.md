@@ -18,6 +18,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Version display in main menu
 - Check for updates from GitHub
 - Windows installer (`install-taxicheck-v1.1.0-windows.exe`) on GitHub releases
+- Settings / first-run setup can install Git and GitHub CLI and log in to GitHub
 - Pull updates directly from the TUI (the app is rebuilt and the new binary is installed automatically)
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
@@ -88,7 +89,8 @@ Use `git branch --show-current` to confirm you are on the stable branch.
 
 - Go 1.27 or later (as required by go.mod)
 - Internet connection (for route calculation via OpenStreetMap)
-- Git (for update and branch features)
+- Git (for update and branch features). Optional: the app can install Git from **Settings** or during first-run setup
+- GitHub CLI (`gh`) and a GitHub login (optional; needed to file issues on GitHub from the app). These can also be installed/logged in from Settings
 - `make` (only needed for `make install` / `make uninstall`)
 
 ### Recommended Font
@@ -122,7 +124,8 @@ If the widget is not in the section you want, move the entry to the `left`, `cen
 On first launch, the application will perform initial setup:
 
 1. **Select Language** - Choose English (1) or Nederlands (2)
-2. **Configure Pricing** - Set rates for each passenger group:
+2. **Git & GitHub (optional)** - Install Git, install the GitHub CLI (`gh`), log in to GitHub, or create an account. Press **N** to skip and continue; you can do this later in Settings
+3. **Configure Pricing** - Set rates for each passenger group:
    - Board Fee (instaptarief)
    - Per Km (kilometertarief)
    - Per Minute (tijdtarief)
@@ -281,7 +284,11 @@ You can edit the TOML file directly with any text editor. Changes will be loaded
 
 ### Settings Screen
 
-Access Settings from the main menu (option 2) to modify pricing without manually editing the TOML file. Changes are saved automatically.
+Access Settings from the main menu (option 2):
+
+1. Language
+2. **Git & GitHub** — status of Git, GitHub CLI, and GitHub login. Keys: **I** install Git, **G** install `gh`, **L** log in (browser), **A** create a GitHub account (browser), **Y** install everything that is missing. Enter continues to pricing
+3. Pricing rates (saved automatically)
 
 ## Passenger Groups
 
@@ -353,6 +360,7 @@ taxiprijs/
 │   │   └── issue_test.go        # Unit tests
 │   ├── routing/
 │   │   └── routing.go           # OSRM + PDOK + Nominatim API client
+│   ├── tools/                   # Install/detect Git, GitHub CLI, GitHub login
 │   ├── wininstall/              # Shared helpers for the Windows installer
 │   └── tui/
 │       ├── model.go             # Bubble Tea TUI
