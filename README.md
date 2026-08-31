@@ -17,6 +17,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Unicode block art taxi logo
 - Version display in main menu
 - Check for updates from GitHub
+- Windows installer (`install.exe`) on GitHub releases
 - Pull updates directly from the TUI (the app is rebuilt and the new binary is installed automatically)
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
@@ -25,6 +26,23 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
   saved to a local log and optionally filed on GitHub via the `gh` CLI
 
 ## Installation
+
+### Windows
+
+Download [`install.exe`](https://github.com/ramackersjp/taxiCheck/releases/latest) from the latest GitHub release and run it.
+
+The installer copies TaxiCheck to `%LOCALAPPDATA%\TaxiCheck`, adds that folder to your user PATH, and creates a Start Menu shortcut. After it finishes, open TaxiCheck from the Start Menu, or open a **new** terminal and run `taxiprijs`.
+
+If Windows SmartScreen says the app is unrecognized, choose **More info** → **Run anyway** (the installer is not code-signed).
+
+```text
+install.exe        # interactive
+install.exe /S     # silent
+```
+
+Uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
+
+To rebuild the installer from source: `make build-windows-installer` (writes `dist/install.exe`).
 
 ### From Source
 
@@ -313,8 +331,9 @@ man taxiprijs
 ```
 taxiprijs/
 ├── cmd/
-│   └── taxiprijs/
-│       └── main.go              # Application entry point
+│   ├── taxiprijs/
+│   │   └── main.go              # Application entry point
+│   └── install/                 # Windows installer (build with make build-windows-installer)
 ├── internal/
 │   ├── calc/
 │   │   ├── calc.go              # Fare calculation engine
@@ -327,6 +346,7 @@ taxiprijs/
 │   │   └── issue_test.go        # Unit tests
 │   ├── routing/
 │   │   └── routing.go           # OSRM + PDOK + Nominatim API client
+│   ├── wininstall/              # Shared helpers for the Windows installer
 │   └── tui/
 │       ├── model.go             # Bubble Tea TUI
 │       ├── style.go             # Lip Gloss styling
@@ -349,7 +369,7 @@ taxiprijs/
 ├── go.mod
 ├── go.sum
 ├── LICENSE
-├── Makefile                     # Build, install, uninstall, cross-compile
+├── Makefile                     # Build, install, uninstall, cross-compile, Windows installer
 ├── README.md
 └── taxiprijs.1                  # Man page
 ```
@@ -428,7 +448,9 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## Uninstall
 
-The easiest way is from within the running app (menu option **7**) or via `make uninstall` from the source directory:
+On Windows, uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
+
+On Linux/macOS, the easiest way is from within the running app (menu option **7**) or via `make uninstall` from the source directory:
 
 ```bash
 # From the source directory (recommended)

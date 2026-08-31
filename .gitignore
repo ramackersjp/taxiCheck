@@ -1,3 +1,4 @@
 .env
 taxiprijs
 dist/
+cmd/install/payload/
