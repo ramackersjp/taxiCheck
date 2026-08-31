@@ -25,12 +25,14 @@ Dutch taxi fare calculator TUI application built with Go and Bubble Tea. Uses PD
 ```
 taxiprijs/
 ├── cmd/taxiprijs/main.go          # Entry point
+├── cmd/install/                   # Windows installer (GOOS=windows, embeds taxiprijs.exe)
 ├── internal/
 │   ├── calc/calc.go               # Fare calculation engine
 │   ├── config/config.go           # TOML configuration
 │   ├── issue/issue.go             # Report issue: local log + GitHub via gh
 │   ├── issue/issue_test.go        # Unit tests
 │   ├── routing/routing.go         # OSRM + PDOK + Nominatim API client
+│   ├── wininstall/                # Shared helpers for the Windows installer
 │   └── tui/                       # Bubble Tea TUI
 │       ├── model.go               # Main model with all screens
 │       ├── update.go              # In-app git pull, rebuild, and binary install
@@ -50,10 +52,10 @@ taxiprijs/
 │       └── reload-plugin.sh       # Dev helper to deploy QML changes
 ├── .env.example                   # API configuration template
 ├── .env                           # API configuration (git-ignored)
-├── .gitignore                     # Ignores .env, binary, dist/
+├── .gitignore                     # Ignores .env, binary, dist/, installer payload
 ├── go.mod
 ├── go.sum
-├── Makefile                       # Build, install, uninstall, cross-compile
+├── Makefile                       # Build, install, uninstall, cross-compile, Windows installer
 ├── LICENSE
 ├── README.md
 └── taxiprijs.1                    # Man page
@@ -200,6 +202,7 @@ taxiprijs/
 - Local changes stashed and restored automatically on branch switch
 - Two-step uninstall confirmation from the main menu
 - Omarchy Quattro bar widget installed by `make install` (launches the TUI from the bar)
+- Windows `install.exe` on GitHub releases (user-level install to %LOCALAPPDATA%\TaxiCheck)
 - Report Issue from the main menu (option 8): description + error output, saved to a local
   log at ~/.taxiprijs/logs/, and optionally filed on GitHub via the `gh` CLI. Works without
   gh/GitHub (falls back to local log only). Collects OS/distro/arch/kernel/Go info.
@@ -219,10 +222,11 @@ taxiprijs
 # TaxiCheck appears as a desktop app
 
 # Cross-compile for other platforms
-make build-all        # all platforms -> dist/
-make build-linux      # Linux only
-make build-macos      # macOS only
-make build-windows    # Windows only
+make build-all                 # all platforms + Windows installer -> dist/
+make build-linux               # Linux only
+make build-macos               # macOS only
+make build-windows             # Windows portable .exe
+make build-windows-installer   # dist/install.exe
 ```
 
 ### Omarchy Quattro Bar Widget
@@ -252,8 +256,14 @@ sudo cp taxiprijs /usr/local/bin/taxiprijs
 
 ### Windows
 
-Use `make build-windows` or cross-compile from any OS. The resulting
-`.exe` runs in any Windows terminal.
+Download `install.exe` from the GitHub release (v1.1.0 and later) and run it.
+It installs to `%LOCALAPPDATA%\TaxiCheck`, adds that folder to the user PATH,
+and creates a Start Menu shortcut.
+
+```sh
+make build-windows-installer   # dist/install.exe (embeds taxiprijs.exe)
+make build-windows             # portable dist/taxiprijs-windows-amd64.exe
+```
 
 ### Uninstall
 

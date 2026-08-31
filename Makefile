@@ -6,7 +6,7 @@ PLUGIN_ID := jp.taxiprijs
 PLUGIN_DST := $(HOME)/.config/omarchy/plugins/$(PLUGIN_ID)
 
 # Cross-compile targets
-.PHONY: build build-linux build-macos build-windows install install-user install-system uninstall clean
+.PHONY: build build-linux build-macos build-windows build-windows-installer install install-user install-system uninstall clean
 
 # Build to a temp name then rename so this works while taxiprijs is running
 # (in-place go build -o taxiprijs fails with ETXTBSY).
@@ -29,7 +29,17 @@ build-windows:
 	@mkdir -p dist
 	GOOS=windows GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(APP_NAME)-windows-amd64.exe ./cmd/taxiprijs
 
-build-all: build-linux build-macos build-windows
+# Self-contained Windows installer (dist/install.exe). Embeds taxiprijs.exe,
+# writes %LOCALAPPDATA%\TaxiCheck, user PATH, and a Start Menu shortcut.
+build-windows-installer: build-windows
+	@mkdir -p cmd/install/payload
+	cp dist/$(APP_NAME)-windows-amd64.exe cmd/install/payload/taxiprijs.exe
+	cp .env.example cmd/install/payload/env.example
+	cp LICENSE cmd/install/payload/LICENSE
+	GOOS=windows GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/install.exe ./cmd/install
+	@echo "Windows installer: dist/install.exe"
+
+build-all: build-linux build-macos build-windows build-windows-installer
 	@echo "Builds complete in dist/"
 
 # User-writable install: binary, source-repo marker, Omarchy QML plugin.
