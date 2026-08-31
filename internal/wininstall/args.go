@@ -1,4 +1,4 @@
-// Package wininstall holds shared helpers for the Windows install.exe.
+// Package wininstall holds shared helpers for the Windows installer.
 package wininstall
 
 import "strings"
