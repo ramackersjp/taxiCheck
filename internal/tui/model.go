@@ -76,7 +76,7 @@ func gitCmd(dir string, args ...string) *exec.Cmd {
 	if dir != "" {
 		args = append([]string{"-C", dir}, args...)
 	}
-	return exec.Command("git", args...)
+	return exec.Command(gitBinary(), args...)
 }
 
 // parseRefNames strips prefix (e.g. "refs/heads/") from for-each-ref %(refname)
@@ -514,7 +514,25 @@ func (m Model) runOp(cmd tea.Cmd) (Model, tea.Cmd) {
 	}
 }
 
+func (m Model) isTyping() bool {
+	switch m.screen {
+	case screenCalc:
+		return true
+	case screenSetup:
+		return m.setupStep != 0
+	case screenSettings:
+		return m.settingsStep != 0
+	case screenReport:
+		return !m.reportSubmitted
+	}
+	return false
+}
+
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Never quit on Ctrl+C so it can be used to copy from the terminal.
+	if msg.Type == tea.KeyCtrlC || msg.String() == "ctrl+c" {
+		return m, nil
+	}
 	if m.loading {
 		switch msg.String() {
 		case "q":
@@ -634,7 +652,9 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
-		return m, tea.Quit
+		if m.setupStep == 0 {
+			return m, tea.Quit
+		}
 	case "esc":
 		if m.setupStep == 0 {
 			m.screen = screenMain
@@ -731,7 +751,9 @@ func (m Model) updateSetupPricing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
-		return m, tea.Quit
+		if m.settingsStep == 0 {
+			return m, tea.Quit
+		}
 	case "esc":
 		if m.settingsStep == 0 {
 			m.screen = screenMain
@@ -962,8 +984,6 @@ func (m Model) narrowSuggestions(prevQuery, newQuery string) {
 
 func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q":
-		return m, tea.Quit
 	case "f2":
 		if m.routeMode == "fastest" {
 			m.routeMode = "shortest"
@@ -1127,11 +1147,11 @@ func gitCheckUpdate(dir, branch string) updateCheckMsg {
 	}
 	remote := "origin/" + branch
 
-	if err := exec.Command("git", "-C", dir, "fetch", "origin", branch).Run(); err != nil {
+	if err := gitCmd(dir, "fetch", "origin", branch).Run(); err != nil {
 		return updateCheckMsg{hasUpdate: false}
 	}
 
-	out, err := exec.Command("git", "-C", dir, "rev-list", "--count", "HEAD.."+remote).Output()
+	out, err := gitCmd(dir, "rev-list", "--count", "HEAD.."+remote).Output()
 	if err != nil {
 		return updateCheckMsg{hasUpdate: false}
 	}
@@ -1176,11 +1196,14 @@ func releaseCheckUpdate(currentVer string) updateCheckMsg {
 func (m Model) pullUpdate() tea.Cmd {
 	lang := m.lang
 	return func() tea.Msg {
-		dir := gitRepoDir()
-		if dir == "" {
-			return updateResultMsg{err: fmt.Errorf("%s", t(lang, "update_no_repo"))}
+		dir, err := ensureSourceRepo()
+		if dir == "" || err != nil {
+			if err == nil {
+				err = fmt.Errorf("%s", t(lang, "update_no_repo"))
+			}
+			return updateResultMsg{err: err}
 		}
-		cmd := exec.Command("git", "-C", dir, "pull")
+		cmd := gitCmd(dir, "pull")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return updateResultMsg{err: fmt.Errorf("%s: %s", err, string(output))}
@@ -1203,9 +1226,12 @@ func (m Model) pullUpdate() tea.Cmd {
 func (m Model) reinstall() tea.Cmd {
 	lang := m.lang
 	return func() tea.Msg {
-		dir := gitRepoDir()
-		if dir == "" {
-			return updateResultMsg{err: fmt.Errorf("%s", t(lang, "update_no_repo"))}
+		dir, err := ensureSourceRepo()
+		if dir == "" || err != nil {
+			if err == nil {
+				err = fmt.Errorf("%s", t(lang, "update_no_repo"))
+			}
+			return updateResultMsg{err: err}
 		}
 		built, rebuildErr, installErr := applyNewBinary(dir)
 		return updateResultMsg{
@@ -1220,7 +1246,10 @@ func (m Model) reinstall() tea.Cmd {
 
 func (m Model) fetchBranches() tea.Cmd {
 	return func() tea.Msg {
-		dir := gitRepoDir()
+		dir, err := ensureSourceRepo()
+		if err != nil {
+			return branchResultMsg{err: err}
+		}
 		current := currentGitBranch(dir)
 		if current == "" {
 			current = "HEAD"
@@ -1260,12 +1289,15 @@ func (m Model) fetchBranches() tea.Cmd {
 
 func (m Model) switchBranch(branch string) tea.Cmd {
 	return func() tea.Msg {
-		dir := gitRepoDir()
-		if dir == "" {
-			return branchSwitchMsg{err: fmt.Errorf("not a git repository")}
+		dir, err := ensureSourceRepo()
+		if dir == "" || err != nil {
+			if err == nil {
+				err = fmt.Errorf("not a git repository")
+			}
+			return branchSwitchMsg{err: err}
 		}
 		git := func(args ...string) *exec.Cmd {
-			cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+			cmd := gitCmd(dir, args...)
 			cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=true")
 			return cmd
 		}
@@ -1287,7 +1319,6 @@ func (m Model) switchBranch(branch string) tea.Cmd {
 		hasLocal := gitRefExists(dir, "refs/heads/"+branch)
 
 		var output []byte
-		var err error
 		if hasLocal {
 			output, err = git("checkout", branch).CombinedOutput()
 		} else {
@@ -1368,8 +1399,6 @@ func (m *Model) initReportInputs() {
 
 func (m Model) updateReport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q":
-		return m, tea.Quit
 	case "esc":
 		if m.reportSubmitted {
 			m.reportSubmitted = false

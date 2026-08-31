@@ -3,10 +3,19 @@ package tui
 import (
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 )
+
+func (m Model) pasteClipboard() (tea.Model, tea.Cmd) {
+	s, err := clipboard.ReadAll()
+	if err != nil || s == "" {
+		return m, nil
+	}
+	return m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s), Paste: true})
+}
 
 func keyMsg(s string) tea.KeyMsg {
 	switch s {
@@ -46,6 +55,9 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 	switch msg.Button {
 	case tea.MouseButtonRight:
+		if m.isTyping() {
+			return m.pasteClipboard()
+		}
 		return m.handleKey(keyMsg("esc"))
 	case tea.MouseButtonLeft:
 		return m.handleClick(msg.X, msg.Y)

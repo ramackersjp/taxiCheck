@@ -118,6 +118,80 @@ func TestLocateGitRepoUsesCwdAndSavedPath(t *testing.T) {
 	}
 }
 
+func TestEnsureSourceRepoClonesWhenMissing(t *testing.T) {
+	cloned := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cloned, "cmd", "taxiprijs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(cloned, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	elsewhere := t.TempDir()
+	home := t.TempDir()
+	origExe, origHome, origWd, origClone := osExecutable, osUserHome, osGetwd, cloneSourceRepo
+	defer func() {
+		osExecutable = origExe
+		osUserHome = origHome
+		osGetwd = origWd
+		cloneSourceRepo = origClone
+	}()
+	osExecutable = func() (string, error) { return filepath.Join(elsewhere, "taxiprijs.exe"), nil }
+	osUserHome = func() (string, error) { return home, nil }
+	osGetwd = func() (string, error) { return elsewhere, nil }
+	var clonedCalled bool
+	cloneSourceRepo = func() (string, error) {
+		clonedCalled = true
+		return cloned, nil
+	}
+
+	got, err := ensureSourceRepo()
+	if err != nil {
+		t.Fatalf("ensureSourceRepo: %v", err)
+	}
+	if got != cloned {
+		t.Fatalf("got %q want cloned repo", got)
+	}
+	if !clonedCalled {
+		t.Fatal("expected clone when no local repo exists")
+	}
+}
+
+func TestSwitchBranchClonesWhenNoRepo(t *testing.T) {
+	dir := initAmbiguousVersionRepo(t)
+	elsewhere := t.TempDir()
+	home := t.TempDir()
+	origExe, origHome, origWd, origClone := osExecutable, osUserHome, osGetwd, cloneSourceRepo
+	origBranch := applyBranchBinary
+	defer func() {
+		osExecutable = origExe
+		osUserHome = origHome
+		osGetwd = origWd
+		cloneSourceRepo = origClone
+		applyBranchBinary = origBranch
+	}()
+	osExecutable = func() (string, error) { return filepath.Join(elsewhere, "taxiprijs.exe"), nil }
+	osUserHome = func() (string, error) { return home, nil }
+	osGetwd = func() (string, error) { return elsewhere, nil }
+	cloneSourceRepo = func() (string, error) { return dir, nil }
+	applyBranchBinary = func(string) (string, error, error) {
+		return filepath.Join(dir, "taxiprijs"), nil, nil
+	}
+
+	if got := gitRepoDir(); got != "" {
+		t.Fatalf("precondition: gitRepoDir must be empty, got %q", got)
+	}
+
+	msg := Model{}.switchBranch("v1.0.1")()
+	res, ok := msg.(branchSwitchMsg)
+	if !ok {
+		t.Fatalf("got %T", msg)
+	}
+	if res.err != nil {
+		t.Fatalf("switch after clone: %v", res.err)
+	}
+}
+
 func TestInstallBinaryCopiesToLocalBin(t *testing.T) {
 	home := t.TempDir()
 	builtDir := t.TempDir()
