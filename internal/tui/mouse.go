@@ -161,8 +161,14 @@ func (m Model) clickBranch(content string) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) clickSetup(lines []string, y int, content string) (tea.Model, tea.Cmd) {
-	if m.setupStep == 0 {
+	if m.setupStep == stepLang {
 		return m.clickLang(content)
+	}
+	if m.setupStep == stepTools {
+		if k := leadingKey(content); k != "" {
+			return m.handleKey(keyMsg(k))
+		}
+		return m, nil
 	}
 	labels := []string{
 		strings.TrimSpace(t(m.lang, "setup_board_fee")),
@@ -180,8 +186,14 @@ func (m Model) clickSetup(lines []string, y int, content string) (tea.Model, tea
 }
 
 func (m Model) clickSettings(lines []string, y int, content string) (tea.Model, tea.Cmd) {
-	if m.settingsStep == 0 {
+	if m.settingsStep == stepLang {
 		return m.clickLang(content)
+	}
+	if m.settingsStep == stepTools {
+		if k := leadingKey(content); k != "" {
+			return m.handleKey(keyMsg(k))
+		}
+		return m, nil
 	}
 	labels := []string{
 		strings.TrimSpace(t(m.lang, "settings_board_fee")),
@@ -305,7 +317,7 @@ func leadingKey(content string) string {
 		tok = content[:i]
 	}
 	switch tok {
-	case "1", "2", "3", "4", "5", "6", "7", "8", "q", "y", "n", "Y", "N", "U", "u", "R", "r":
+	case "1", "2", "3", "4", "5", "6", "7", "8", "q", "y", "n", "Y", "N", "U", "u", "R", "r", "I", "i", "G", "g", "L", "l", "A", "a":
 		return strings.ToLower(tok)
 	}
 	return ""
