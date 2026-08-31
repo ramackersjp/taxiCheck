@@ -26,7 +26,18 @@ func main() {
 	}
 	tui.DetectVersion()
 
-	p := tea.NewProgram(tui.NewModel(), tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(
+		tui.NewModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		// Ctrl+C is copy in terminals; do not treat SIGINT as quit.
+		tea.WithFilter(func(_ tea.Model, msg tea.Msg) tea.Msg {
+			if _, ok := msg.(tea.InterruptMsg); ok {
+				return nil
+			}
+			return msg
+		}),
+	)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

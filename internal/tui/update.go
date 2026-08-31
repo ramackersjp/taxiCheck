@@ -6,13 +6,20 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 const (
 	sourceRepoFile   = "source-repo"
 	installedBinName = "taxiprijs"
+	defaultRepoURL   = "https://github.com/ramackersjp/taxiCheck.git"
+	sourceCloneDir   = "src"
 )
+
+// cloneSourceRepo downloads the TaxiCheck git repo when the app was installed
+// without a checkout (Windows install.exe). Overridable in tests.
+var cloneSourceRepo = cloneSourceRepoImpl
 
 // Overridable for tests.
 var (
@@ -51,6 +58,9 @@ func locateGitRepo() string {
 	if saved := readRememberedRepoDir(); saved != "" {
 		candidates = append(candidates, saved)
 	}
+	if home, err := osUserHome(); err == nil && home != "" {
+		candidates = append(candidates, filepath.Join(home, ".taxiprijs", sourceCloneDir))
+	}
 
 	seen := map[string]bool{}
 	for _, c := range candidates {
@@ -64,12 +74,104 @@ func locateGitRepo() string {
 		}
 	}
 
-	if out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output(); err == nil {
-		if dir := strings.TrimSpace(string(out)); isTaxiprijsRepo(dir) {
-			return dir
+	if wd, err := osGetwd(); err == nil && wd != "" {
+		if out, err := gitCmd(wd, "rev-parse", "--show-toplevel").Output(); err == nil {
+			if dir := strings.TrimSpace(string(out)); isTaxiprijsRepo(dir) {
+				return dir
+			}
 		}
 	}
 	return ""
+}
+
+func defaultSrcDir() string {
+	home, err := osUserHome()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".taxiprijs", sourceCloneDir)
+}
+
+func gitBinary() string {
+	if p, err := exec.LookPath("git"); err == nil {
+		return p
+	}
+	if runtime.GOOS == "windows" {
+		if p, err := exec.LookPath("git.exe"); err == nil {
+			return p
+		}
+	}
+	var candidates []string
+	if pf := os.Getenv("ProgramFiles"); pf != "" {
+		candidates = append(candidates, filepath.Join(pf, "Git", "cmd", "git.exe"))
+	}
+	if pf := os.Getenv("ProgramFiles(x86)"); pf != "" {
+		candidates = append(candidates, filepath.Join(pf, "Git", "cmd", "git.exe"))
+	}
+	if home, err := osUserHome(); err == nil && home != "" {
+		candidates = append(candidates, filepath.Join(home, "AppData", "Local", "Programs", "Git", "cmd", "git.exe"))
+	}
+	candidates = append(candidates,
+		`C:\Program Files\Git\cmd\git.exe`,
+		"/usr/bin/git",
+		"/usr/local/bin/git",
+	)
+	for _, p := range candidates {
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			return p
+		}
+	}
+	return "git"
+}
+
+func gitAvailable() bool {
+	p := gitBinary()
+	if filepath.Base(p) != p {
+		st, err := os.Stat(p)
+		return err == nil && !st.IsDir()
+	}
+	_, err := exec.LookPath(p)
+	return err == nil
+}
+
+// ensureSourceRepo returns a TaxiCheck git checkout, cloning it into
+// ~/.taxiprijs/src when the Windows (or portable) install has no repo.
+func ensureSourceRepo() (string, error) {
+	if dir := gitRepoDir(); dir != "" {
+		return dir, nil
+	}
+	return cloneSourceRepo()
+}
+
+func cloneSourceRepoImpl() (string, error) {
+	if !gitAvailable() {
+		return "", fmt.Errorf("git is not installed")
+	}
+	dest := defaultSrcDir()
+	if dest == "" {
+		return "", fmt.Errorf("cannot determine home directory")
+	}
+	if isTaxiprijsRepo(dest) {
+		rememberRepoDir(dest)
+		return dest, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(dest); err == nil {
+		_ = os.RemoveAll(dest)
+	}
+	cmd := exec.Command(gitBinary(), "clone", defaultRepoURL, dest)
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=true")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%s", strings.TrimSpace(string(out)))
+	}
+	if !isTaxiprijsRepo(dest) {
+		return "", fmt.Errorf("cloned repository is incomplete")
+	}
+	rememberRepoDir(dest)
+	return dest, nil
 }
 
 func isTaxiprijsRepo(dir string) bool {
