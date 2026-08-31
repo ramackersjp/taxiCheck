@@ -2,8 +2,22 @@
 
 package tui
 
-import "fmt"
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+
+	"golang.org/x/sys/windows"
+)
 
 func execReplacedProcessImpl(bin string) error {
-	return fmt.Errorf("restart the app to run the new version")
+	if bin == "" {
+		return os.ErrNotExist
+	}
+	cmd := exec.Command(bin)
+	cmd.Dir = filepath.Dir(bin)
+	cmd.SysProcAttr = &windows.SysProcAttr{
+		CreationFlags: windows.CREATE_NEW_CONSOLE,
+	}
+	return cmd.Start()
 }

@@ -72,9 +72,9 @@ install: build install-user
 	@sudo -n install -Dm644 extras/$(APP_NAME).desktop /usr/share/applications/$(APP_NAME).desktop 2>/dev/null || true
 
 uninstall:
-	sudo rm -f /usr/local/bin/$(APP_NAME)
-	sudo rm -f /usr/share/applications/$(APP_NAME).desktop
-	sudo rm -f /usr/local/share/man/man1/$(APP_NAME).1
+	@sudo -n rm -f /usr/local/bin/$(APP_NAME) 2>/dev/null || true
+	@sudo -n rm -f /usr/share/applications/$(APP_NAME).desktop 2>/dev/null || true
+	@sudo -n rm -f /usr/local/share/man/man1/$(APP_NAME).1 2>/dev/null || true
 	rm -f $$HOME/.local/bin/$(APP_NAME)
 	rm -rf $$HOME/.$(APP_NAME)
 	rm -rf $$HOME/.config/omarchy/plugins/jp.taxiprijs

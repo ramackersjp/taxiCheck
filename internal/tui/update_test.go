@@ -192,6 +192,99 @@ func TestSwitchBranchClonesWhenNoRepo(t *testing.T) {
 	}
 }
 
+func TestInstallBinaryReplacesRunningWindowsExe(t *testing.T) {
+	origOS := currentGOOS
+	currentGOOS = "windows"
+	defer func() { currentGOOS = origOS }()
+
+	local := t.TempDir()
+	t.Setenv("LOCALAPPDATA", local)
+	installDir := filepath.Join(local, "TaxiCheck")
+	if err := os.MkdirAll(installDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	running := filepath.Join(installDir, "taxiprijs.exe")
+	if err := os.WriteFile(running, []byte("old"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	built := filepath.Join(t.TempDir(), "taxiprijs.exe")
+	if err := os.WriteFile(built, []byte("new"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	origExe, origHome := osExecutable, osUserHome
+	defer func() {
+		osExecutable = origExe
+		osUserHome = origHome
+	}()
+	osExecutable = func() (string, error) { return running, nil }
+	osUserHome = func() (string, error) { return t.TempDir(), nil }
+
+	if err := installBinary(built, t.TempDir()); err != nil {
+		t.Fatalf("installBinary: %v", err)
+	}
+	got, err := os.ReadFile(running)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "new" {
+		t.Fatalf("running exe not replaced, got %q", got)
+	}
+}
+
+func TestReplaceFileRenamesLockedDest(t *testing.T) {
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "taxiprijs.exe")
+	if err := os.WriteFile(dst, []byte("old"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(dir, "fresh")
+	if err := os.WriteFile(src, []byte("new"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := replaceFile(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(dst)
+	if string(got) != "new" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestUninstallRemovesUserBinary(t *testing.T) {
+	home := t.TempDir()
+	local := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(local, 0755); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(local, "taxiprijs")
+	if err := os.WriteFile(bin, []byte("app"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := filepath.Join(home, ".taxiprijs")
+	if err := os.MkdirAll(cfg, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	origHome, origExe := osUserHome, osExecutable
+	defer func() {
+		osUserHome = origHome
+		osExecutable = origExe
+	}()
+	osUserHome = func() (string, error) { return home, nil }
+	osExecutable = func() (string, error) { return bin, nil }
+
+	if err := uninstallApp(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(bin); !os.IsNotExist(err) {
+		t.Fatalf("user binary still present: %v", err)
+	}
+	if _, err := os.Stat(cfg); !os.IsNotExist(err) {
+		t.Fatalf("config dir still present: %v", err)
+	}
+}
+
 func TestInstallBinaryCopiesToLocalBin(t *testing.T) {
 	home := t.TempDir()
 	builtDir := t.TempDir()

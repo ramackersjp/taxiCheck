@@ -32,6 +32,17 @@ func TestAppendPath(t *testing.T) {
 	}
 }
 
+func TestUserInstallDirUsesLocalAppData(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", `C:\Users\jp\AppData\Local`)
+	got := UserInstallDir()
+	if got == "" || got == `C:\Users\jp\AppData\Local` {
+		t.Fatalf("got %q", got)
+	}
+	if UserInstallBin() == "" {
+		t.Fatal("empty install bin")
+	}
+}
+
 func TestRemovePath(t *testing.T) {
 	list := `C:\Windows;C:\TaxiCheck;C:\Windows\System32`
 	got := RemovePath(list, `c:\taxicheck\`)
