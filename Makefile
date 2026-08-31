@@ -2,6 +2,7 @@ APP_NAME := taxiprijs
 VERSION  := 1.1.0
 GOFLAGS  := -trimpath
 LDFLAGS  := -s -w -X main.version=$(VERSION)
+INSTALLER_NAME := install-taxicheck-v$(VERSION)-windows.exe
 PLUGIN_ID := jp.taxiprijs
 PLUGIN_DST := $(HOME)/.config/omarchy/plugins/$(PLUGIN_ID)
 
@@ -29,15 +30,15 @@ build-windows:
 	@mkdir -p dist
 	GOOS=windows GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(APP_NAME)-windows-amd64.exe ./cmd/taxiprijs
 
-# Self-contained Windows installer (dist/install.exe). Embeds taxiprijs.exe,
-# writes %LOCALAPPDATA%\TaxiCheck, user PATH, and a Start Menu shortcut.
+# Self-contained Windows installer. Embeds taxiprijs.exe, writes
+# %LOCALAPPDATA%\TaxiCheck, user PATH, and a Start Menu shortcut.
 build-windows-installer: build-windows
 	@mkdir -p cmd/install/payload
 	cp dist/$(APP_NAME)-windows-amd64.exe cmd/install/payload/taxiprijs.exe
 	cp .env.example cmd/install/payload/env.example
 	cp LICENSE cmd/install/payload/LICENSE
-	GOOS=windows GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/install.exe ./cmd/install
-	@echo "Windows installer: dist/install.exe"
+	GOOS=windows GOARCH=amd64 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o dist/$(INSTALLER_NAME) ./cmd/install
+	@echo "Windows installer: dist/$(INSTALLER_NAME)"
 
 build-all: build-linux build-macos build-windows build-windows-installer
 	@echo "Builds complete in dist/"

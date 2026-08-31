@@ -1,7 +1,7 @@
 //go:build windows
 
-// TaxiCheck Windows installer. Built as dist/install.exe by
-// `make build-windows-installer`. Flags: /S (silent), /uninstall.
+// TaxiCheck Windows installer. Built as dist/install-taxicheck-vVERSION-windows.exe
+// by `make build-windows-installer`. Flags: /S (silent), /uninstall.
 package main
 
 import (

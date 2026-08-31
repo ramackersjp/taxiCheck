@@ -202,7 +202,7 @@ taxiprijs/
 - Local changes stashed and restored automatically on branch switch
 - Two-step uninstall confirmation from the main menu
 - Omarchy Quattro bar widget installed by `make install` (launches the TUI from the bar)
-- Windows `install.exe` on GitHub releases (user-level install to %LOCALAPPDATA%\TaxiCheck)
+- Windows `install-taxicheck-vVERSION-windows.exe` on GitHub releases (user-level install to %LOCALAPPDATA%\TaxiCheck)
 - Report Issue from the main menu (option 8): description + error output, saved to a local
   log at ~/.taxiprijs/logs/, and optionally filed on GitHub via the `gh` CLI. Works without
   gh/GitHub (falls back to local log only). Collects OS/distro/arch/kernel/Go info.
@@ -226,7 +226,7 @@ make build-all                 # all platforms + Windows installer -> dist/
 make build-linux               # Linux only
 make build-macos               # macOS only
 make build-windows             # Windows portable .exe
-make build-windows-installer   # dist/install.exe
+make build-windows-installer   # dist/install-taxicheck-vVERSION-windows.exe
 ```
 
 ### Omarchy Quattro Bar Widget
@@ -256,12 +256,14 @@ sudo cp taxiprijs /usr/local/bin/taxiprijs
 
 ### Windows
 
-Download `install.exe` from the GitHub release (v1.1.0 and later) and run it.
-It installs to `%LOCALAPPDATA%\TaxiCheck`, adds that folder to the user PATH,
-and creates a Start Menu shortcut.
+Download `install-taxicheck-v1.1.0-windows.exe` from the GitHub release and
+run it (double-click). No Go or Git required. It installs to
+`%LOCALAPPDATA%\TaxiCheck`, adds that folder to the user PATH, and creates a
+Start Menu shortcut. Then start TaxiCheck from the Start Menu, or open a new
+terminal and run `taxiprijs`.
 
 ```sh
-make build-windows-installer   # dist/install.exe (embeds taxiprijs.exe)
+make build-windows-installer   # dist/install-taxicheck-v1.1.0-windows.exe
 make build-windows             # portable dist/taxiprijs-windows-amd64.exe
 ```
 

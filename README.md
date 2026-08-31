@@ -17,7 +17,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Unicode block art taxi logo
 - Version display in main menu
 - Check for updates from GitHub
-- Windows installer (`install.exe`) on GitHub releases
+- Windows installer (`install-taxicheck-v1.1.0-windows.exe`) on GitHub releases
 - Pull updates directly from the TUI (the app is rebuilt and the new binary is installed automatically)
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
@@ -29,20 +29,27 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 
 ### Windows
 
-Download [`install.exe`](https://github.com/ramackersjp/taxiCheck/releases/latest) from the latest GitHub release and run it.
+You do not need Go, Git, or a compiler. Install with the Windows installer from the GitHub release:
 
-The installer copies TaxiCheck to `%LOCALAPPDATA%\TaxiCheck`, adds that folder to your user PATH, and creates a Start Menu shortcut. After it finishes, open TaxiCheck from the Start Menu, or open a **new** terminal and run `taxiprijs`.
-
-If Windows SmartScreen says the app is unrecognized, choose **More info** → **Run anyway** (the installer is not code-signed).
+1. Open the **[latest GitHub release](https://github.com/ramackersjp/taxiCheck/releases/latest)**.
+2. Download **[install-taxicheck-v1.1.0-windows.exe](https://github.com/ramackersjp/taxiCheck/releases/download/v1.1.0/install-taxicheck-v1.1.0-windows.exe)**.
+3. Double-click the file. If Windows SmartScreen says the app is unrecognized, click **More info** and then **Run anyway** (the installer is not code-signed).
+4. The installer copies TaxiCheck to `%LOCALAPPDATA%\TaxiCheck`, adds that folder to your user PATH, and creates a Start Menu shortcut.
+5. Start **TaxiCheck** from the Start Menu, or open a **new** terminal (Windows Terminal, PowerShell, or Command Prompt) and run:
 
 ```text
-install.exe        # interactive
-install.exe /S     # silent
+taxiprijs
+```
+
+Silent install (no prompts):
+
+```text
+install-taxicheck-v1.1.0-windows.exe /S
 ```
 
 Uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
 
-To rebuild the installer from source: `make build-windows-installer` (writes `dist/install.exe`).
+To rebuild the installer from source: `make build-windows-installer` (writes `dist/install-taxicheck-v1.1.0-windows.exe`).
 
 ### From Source
 
@@ -448,7 +455,7 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## Uninstall
 
-On Windows, uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
+On Windows (installer), uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
 
 On Linux/macOS, the easiest way is from within the running app (menu option **7**) or via `make uninstall` from the source directory:
 
