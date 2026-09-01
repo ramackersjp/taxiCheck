@@ -275,6 +275,9 @@ type Model struct {
 	reportSubmitted bool
 	opGen           int
 	tools           tools.Status
+	lastMouseX      int
+	lastMouseY      int
+	lastMousePress  bool
 }
 
 func NewModel() Model {
@@ -313,7 +316,9 @@ func NewModel() Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	// Re-enable after alt-screen: Linux terminals (kitty/foot/alacritty)
+	// reset DEC mouse modes when entering the alt buffer or on first resize.
+	return tea.EnableMouseCellMotion
 }
 
 func (m Model) inputWidth() int {
@@ -368,7 +373,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.inputs[i].Width = inputW
 			}
 		}
-		return m, nil
+		return m, tea.EnableMouseCellMotion
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	case tea.MouseMsg:
@@ -506,7 +511,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.err = ""
 		}
-		return m, m.refreshTools()
+		return m, tea.Batch(m.refreshTools(), tea.EnableMouseCellMotion)
 	}
 
 	return m, nil

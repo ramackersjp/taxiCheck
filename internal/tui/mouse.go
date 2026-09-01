@@ -50,16 +50,34 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if msg.Action != tea.MouseActionPress {
+	// Linux SGR often delivers a reliable Release; Windows usually delivers
+	// Press. Handle both, but ignore the duplicate Release after a Press at
+	// the same cell so a click does not fire twice.
+	isLeft := msg.Button == tea.MouseButtonLeft || msg.Type == tea.MouseLeft
+	isRight := msg.Button == tea.MouseButtonRight || msg.Type == tea.MouseRight
+	switch msg.Action {
+	case tea.MouseActionPress, tea.MouseActionRelease:
+	default:
 		return m, nil
 	}
-	switch msg.Button {
-	case tea.MouseButtonRight:
+	if msg.Action == tea.MouseActionRelease && m.lastMousePress &&
+		msg.X == m.lastMouseX && msg.Y == m.lastMouseY {
+		m.lastMousePress = false
+		return m, nil
+	}
+	if msg.Action == tea.MouseActionPress {
+		m.lastMouseX, m.lastMouseY = msg.X, msg.Y
+		m.lastMousePress = true
+	} else {
+		m.lastMousePress = false
+	}
+	switch {
+	case isRight:
 		if m.isTyping() {
 			return m.pasteClipboard()
 		}
 		return m.handleKey(keyMsg("esc"))
-	case tea.MouseButtonLeft:
+	case isLeft:
 		return m.handleClick(msg.X, msg.Y)
 	}
 	return m, nil
@@ -67,14 +85,10 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 	lines := strings.Split(ansi.Strip(m.View()), "\n")
-	if y < 0 || y >= len(lines) {
+	content, y := hitContent(lines, x, y)
+	if content == "" {
 		return m, nil
 	}
-	line := lines[y]
-	if !xOnContent(line, x) {
-		return m, nil
-	}
-	content := contentOf(line)
 
 	switch m.screen {
 	case screenHelp:
@@ -330,16 +344,69 @@ func contentOf(line string) string {
 	return strings.TrimSpace(s)
 }
 
+// hitContent maps a click to the nearest useful row. Linux terminals can
+// report Y off by one vs lipgloss.Place padding; also allow a click on the
+// padded margin of a row that has a menu key.
+func hitContent(lines []string, x, y int) (string, int) {
+	if c := contentAt(lines, x, y); c != "" {
+		return c, y
+	}
+	bestIdx, bestDist := -1, 3
+	for i := range lines {
+		c := contentAt(lines, x, i)
+		if c == "" {
+			continue
+		}
+		d := i - y
+		if d < 0 {
+			d = -d
+		}
+		if d < bestDist {
+			bestDist = d
+			bestIdx = i
+		}
+	}
+	if bestIdx >= 0 {
+		return contentOf(lines[bestIdx]), bestIdx
+	}
+	if y >= 0 && y < len(lines) {
+		return contentOf(lines[y]), y
+	}
+	return "", y
+}
+
+func contentAt(lines []string, x, y int) string {
+	if y < 0 || y >= len(lines) {
+		return ""
+	}
+	c := contentOf(lines[y])
+	if c == "" {
+		return ""
+	}
+	if leadingKey(c) != "" {
+		return c
+	}
+	if xOnContent(lines[y], x) {
+		return c
+	}
+	return ""
+}
+
 func xOnContent(line string, x int) bool {
-	runes := []rune(line)
 	start, end := -1, -1
-	for i, r := range runes {
+	col := 0
+	for _, r := range line {
+		w := 1
+		if r == '\t' {
+			w = 4
+		}
 		if r != ' ' {
 			if start < 0 {
-				start = i
+				start = col
 			}
-			end = i
+			end = col + w - 1
 		}
+		col += w
 	}
 	if start < 0 {
 		return false
