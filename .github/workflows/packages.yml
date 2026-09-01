@@ -35,6 +35,8 @@ jobs:
       options: --privileged
     steps:
       - uses: actions/checkout@v4
+      - name: Create dist dir for the bundle
+        run: mkdir -p dist
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: dist/taxiprijs-flatpak.flatpak
