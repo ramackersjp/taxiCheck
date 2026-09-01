@@ -43,12 +43,13 @@ build-windows-installer: build-windows
 build-all: build-linux build-macos build-windows build-windows-installer
 	@echo "Builds complete in dist/"
 
-# User-writable install: binary, source-repo marker, Omarchy QML plugin.
-# No sudo. Safe to run from the TUI after a pull or F3.
+# User-writable install: binary, source-repo marker, desktop entry, Omarchy QML plugin.
+# No sudo, so the desktop entry always lands even without passwordless sudo.
 install-user:
 	@mkdir -p $(HOME)/.local/bin $(HOME)/.taxiprijs
 	@cp $(APP_NAME) $(HOME)/.local/bin/$(APP_NAME)
 	@pwd > $(HOME)/.taxiprijs/source-repo
+	@install -Dm644 extras/$(APP_NAME).desktop $(HOME)/.local/share/applications/$(APP_NAME).desktop
 	@mkdir -p $(PLUGIN_DST)
 	@cp extras/omarchy-plugin/* $(PLUGIN_DST)/
 	@if [ -f "$(HOME)/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \
@@ -57,6 +58,7 @@ install-user:
 	@if command -v omarchy >/dev/null 2>&1; then omarchy restart shell || true; \
 	elif command -v omarchy-shell >/dev/null 2>&1; then omarchy-shell -q shell rescanPlugins || true; fi
 	@echo "Installed: $(HOME)/.local/bin/$(APP_NAME)"
+	@echo "Desktop entry: $(HOME)/.local/share/applications/$(APP_NAME).desktop"
 	@echo "Omarchy QML plugin: $(PLUGIN_DST)"
 
 install-system:
@@ -65,8 +67,9 @@ install-system:
 	@echo "Installed: /usr/local/bin/$(APP_NAME)"
 	@echo "Desktop entry: /usr/share/applications/$(APP_NAME).desktop"
 
-# Always update the user binary + QML. System files only if passwordless sudo
-# is available, so `make install` from the TUI never blocks on a password.
+# Always update the user binary + user desktop entry + QML. System files only
+# if passwordless sudo is available, so `make install` from the TUI never
+# blocks on a password (the user-level desktop entry still lands either way).
 install: build install-user
 	@sudo -n install -Dm755 $(APP_NAME) /usr/local/bin/$(APP_NAME) 2>/dev/null || true
 	@sudo -n install -Dm644 extras/$(APP_NAME).desktop /usr/share/applications/$(APP_NAME).desktop 2>/dev/null || true
@@ -76,6 +79,7 @@ uninstall:
 	@sudo -n rm -f /usr/share/applications/$(APP_NAME).desktop 2>/dev/null || true
 	@sudo -n rm -f /usr/local/share/man/man1/$(APP_NAME).1 2>/dev/null || true
 	rm -f $$HOME/.local/bin/$(APP_NAME)
+	rm -f $$HOME/.local/share/applications/$(APP_NAME).desktop
 	rm -rf $$HOME/.$(APP_NAME)
 	rm -rf $$HOME/.config/omarchy/plugins/jp.taxiprijs
 	@if [ -f "$$HOME/.config/omarchy/shell.json" ] && command -v jq >/dev/null 2>&1; then \
