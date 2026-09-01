@@ -6,6 +6,7 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -105,7 +106,7 @@ func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 			return m.openMenu(k)
 		}
 		if m.setupDone {
-			return m.clickCalc(lines, y, content)
+			return m.clickCalc(lines, x, y, content)
 		}
 		if k != "" {
 			return m.openMenu(k)
@@ -124,7 +125,7 @@ func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 			return m.handleKey(keyMsg("esc"))
 		}
 	case screenCalc:
-		return m.clickCalc(lines, y, content)
+		return m.clickCalc(lines, x, y, content)
 	case screenBranch:
 		return m.clickBranch(content)
 	case screenSetup:
@@ -145,10 +146,7 @@ func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) clickCalc(lines []string, y int, content string) (tea.Model, tea.Cmd) {
-	if k := leadingKey(content); k == "f2" || strings.Contains(content, "F2") || strings.Contains(content, "f2") {
-		return m.handleKey(keyMsg("f2"))
-	}
+func (m Model) clickCalc(lines []string, x, y int, content string) (tea.Model, tea.Cmd) {
 	if m.showSuggest {
 		for i, s := range m.suggestions {
 			if s.Display != "" && strings.Contains(content, truncateDisplay(s.Display, m.contentWidth()-8)) {
@@ -156,6 +154,11 @@ func (m Model) clickCalc(lines []string, y int, content string) (tea.Model, tea.
 				return m.handleKey(keyMsg("enter"))
 			}
 		}
+	}
+	// Route/F2 sits on the same rows as passengers. Only treat the click as
+	// F2 when X is in that column (or on the F2 token in the help line).
+	if m.clickIsMode(lines, x, y) {
+		return m.handleKey(keyMsg("f2"))
 	}
 	labels := []string{
 		strings.TrimSpace(t(m.lang, "calc_label_start")),
@@ -171,6 +174,49 @@ func (m Model) clickCalc(lines []string, y int, content string) (tea.Model, tea.
 		return m.focusCalcAt(idx)
 	}
 	return m, nil
+}
+
+func (m Model) clickIsMode(lines []string, x, y int) bool {
+	modeLab := strings.TrimSpace(t(m.lang, "calc_mode"))
+	modeTop, modeLeft := -1, -1
+	for i, line := range lines {
+		c := contentOf(line)
+		if modeLab == "" || !strings.Contains(c, modeLab) {
+			continue
+		}
+		if strings.Contains(c, "Tab:") {
+			continue
+		}
+		modeTop = i
+		modeLeft = colOf(line, modeLab)
+		if modeLeft > 1 {
+			modeLeft -= 2 // "● "
+		}
+		break
+	}
+	if modeTop >= 0 && y >= modeTop-1 && y <= modeTop+4 && modeLeft >= 0 && x >= modeLeft {
+		return true
+	}
+	if y >= 0 && y < len(lines) {
+		if c := colOf(lines[y], "F2"); c >= 0 {
+			return x >= c-1 && x <= c+3
+		}
+		if c := colOf(strings.ToLower(lines[y]), "f2"); c >= 0 {
+			return x >= c-1 && x <= c+3
+		}
+	}
+	return false
+}
+
+func colOf(line, substr string) int {
+	if substr == "" {
+		return -1
+	}
+	idx := strings.Index(line, substr)
+	if idx < 0 {
+		return -1
+	}
+	return lipgloss.Width(line[:idx])
 }
 
 func (m Model) clickBranch(content string) (tea.Model, tea.Cmd) {
@@ -303,14 +349,30 @@ func (m Model) focusInputAt(idx int) (tea.Model, tea.Cmd) {
 }
 
 func fieldIndexAt(lines []string, y int, labels []string) int {
+	type hit struct{ fi, y int }
+	var found []hit
+	seen := map[int]bool{}
 	for i, line := range lines {
 		c := contentOf(line)
 		for fi, lab := range labels {
-			if lab != "" && strings.Contains(c, lab) {
-				if y == i || y == i-1 {
-					return fi
-				}
+			if lab == "" || seen[fi] || !strings.Contains(c, lab) {
+				continue
 			}
+			found = append(found, hit{fi, i})
+			seen[fi] = true
+			break
+		}
+	}
+	for i, h := range found {
+		// Label plus the rounded box (top, value, bottom). Allow one row
+		// above for terminals that report Y off by one.
+		y0 := h.y - 1
+		y1 := h.y + 4
+		if i+1 < len(found) && found[i+1].y-1 < y1 {
+			y1 = found[i+1].y - 1
+		}
+		if y >= y0 && y <= y1 {
+			return h.fi
 		}
 	}
 	return -1
@@ -363,30 +425,18 @@ func contentOf(line string) string {
 	return strings.TrimSpace(s)
 }
 
-// hitContent maps a click to the nearest useful row. Linux terminals can
-// report Y off by one vs lipgloss.Place padding; also allow a click on the
-// padded margin of a row that has a menu key.
+// hitContent maps a click to a useful row. Prefer the exact cell, then an
+// adjacent line (Linux/Windows can report Y off by one vs lipgloss.Place).
+// Do not snap several rows away: that stole clicks from field cards onto
+// nearby menu keys.
 func hitContent(lines []string, x, y int) (string, int) {
 	if c := contentAt(lines, x, y); c != "" {
 		return c, y
 	}
-	bestIdx, bestDist := -1, 3
-	for i := range lines {
-		c := contentAt(lines, x, i)
-		if c == "" {
-			continue
+	for _, d := range []int{-1, 1} {
+		if c := contentAt(lines, x, y+d); c != "" {
+			return c, y + d
 		}
-		d := i - y
-		if d < 0 {
-			d = -d
-		}
-		if d < bestDist {
-			bestDist = d
-			bestIdx = i
-		}
-	}
-	if bestIdx >= 0 {
-		return contentOf(lines[bestIdx]), bestIdx
 	}
 	if y >= 0 && y < len(lines) {
 		return contentOf(lines[y]), y

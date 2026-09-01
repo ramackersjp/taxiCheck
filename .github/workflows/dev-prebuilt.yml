@@ -1,0 +1,36 @@
+name: Dev prebuilt binaries
+
+# Rolling prerelease used by in-app updates when `go` is not installed
+# (typical Windows install.exe users). Does not modify versioned releases.
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build Linux and Windows binaries
+        run: make build-linux build-windows
+      - name: Publish latest-dev prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view latest-dev >/dev/null 2>&1; then
+            gh release create latest-dev \
+              --prerelease \
+              --title "dev (rolling)" \
+              --notes "Latest binaries from the dev branch. Used by in-app updates when Go is not installed. Not a stable release."
+          fi
+          gh release upload latest-dev \
+            dist/taxiprijs-linux-amd64 \
+            dist/taxiprijs-linux-arm64 \
+            dist/taxiprijs-windows-amd64.exe \
+            --clobber

@@ -1087,33 +1087,38 @@ func (m Model) checkUpdate() tea.Cmd {
 	currentVer := appVersion
 	return func() tea.Msg {
 		dir := gitRepoDir()
-
 		branch := currentGitBranch(dir)
-
-		// Stable release branches track GitHub releases; dev (and any other
-		// branch) receives updates via the remote git branch.
-		if stableBranch(branch) {
-			return releaseCheckUpdate(currentVer)
-		}
-		return gitCheckUpdate(dir, branch)
+		return pickUpdateCheck(dir, branch, currentVer)
 	}
+}
+
+// pickUpdateCheck chooses GitHub releases for stable installs (and Windows
+// installer copies with no checkout). Empty dir/branch used to look like
+// "up to date" because gitCheckUpdate returned a silent miss.
+func pickUpdateCheck(dir, branch, currentVer string) updateCheckMsg {
+	if dir == "" || branch == "" || stableBranch(branch) {
+		return releaseCheckUpdate(currentVer)
+	}
+	return gitCheckUpdate(dir, branch)
 }
 
 // gitCheckUpdate compares the current branch against its remote so that new
 // commits merged (e.g. into origin/dev) are detected as an available update.
 func gitCheckUpdate(dir, branch string) updateCheckMsg {
 	if dir == "" || branch == "" {
-		return updateCheckMsg{hasUpdate: false}
+		return updateCheckMsg{err: fmt.Errorf("could not find the source repository to update")}
 	}
 	remote := "origin/" + branch
 
-	if err := gitCmd(dir, "fetch", "origin", branch).Run(); err != nil {
-		return updateCheckMsg{hasUpdate: false}
+	fetch := gitCmd(dir, "fetch", "--prune", "origin")
+	fetch.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=true")
+	if err := fetch.Run(); err != nil {
+		return updateCheckMsg{err: fmt.Errorf("could not fetch updates")}
 	}
 
 	out, err := gitCmd(dir, "rev-list", "--count", "HEAD.."+remote).Output()
 	if err != nil {
-		return updateCheckMsg{hasUpdate: false}
+		return updateCheckMsg{err: fmt.Errorf("could not compare with origin/%s", branch)}
 	}
 	count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 	if err != nil || count <= 0 {
