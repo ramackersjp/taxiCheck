@@ -9,40 +9,37 @@ is a terminal user interface application for calculating taxi fares in the Nethe
 .PP
 It supports configurable pricing for different passenger groups and uses TOML for configuration.
 .PP
-The main menu displays the current version and provides options for fare calculation,
-settings, help, initial setup, update checking, branch switching, uninstalling, and
-reporting issues.
+The home screen is the fare form. Press 1 or click
+.B ▸ Menu
+to open the menu (Settings, Help, updates, branch switch, uninstall, report issue).
 .SH OPTIONS
 .B taxiprijs
 does not take any command line options.
 .SH KEYBOARD CONTROLS
 .TP
 .B 1
-Calculate fare
+Open the menu from home (press Esc first if a fare field is focused)
+.TP
+.B 1
+Settings (on the menu page)
 .TP
 .B 2
-Settings
+Help/Manual (on the menu page)
 .TP
 .B 3
-Help/Manual
+Check for updates (GitHub) (on the menu page)
 .TP
 .B 4
-Initial setup
+Switch branch (dev / stable) (on the menu page)
 .TP
 .B 5
-Check for updates (GitHub)
+Uninstall (on the menu page)
 .TP
 .B 6
-Switch branch (dev / stable)
-.TP
-.B 7
-Uninstall
-.TP
-.B 8
-Report issue
+Report issue (on the menu page)
 .TP
 .B q
-Quit
+Quit (from the menu page, or from home when fields are not focused)
 .TP
 .B Tab
 Next input field
@@ -121,7 +118,7 @@ Calculate a fare:
 .IP 1. 3
 Start the application
 .IP 2. 3
-Select option 1 (Calculate Fare)
+The fare form is already on the home screen; optionally press 1 for the menu
 .IP 3. 3
 Enter start address (e.g. "Dam Square, Amsterdam")
 .IP 4. 3
@@ -142,6 +139,6 @@ Error occurred
 .SH BUGS
 Report bugs at https://github.com/ramackersjp/taxiCheck/issues
 .SH AUTHOR
-jp
+J.P. Ramackers
 .SH COPYRIGHT
 MIT License

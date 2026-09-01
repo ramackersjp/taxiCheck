@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -250,22 +251,64 @@ func (m Model) viewPassModeRow() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", gap), right)
 }
 
-func (m Model) viewMainMenuKeys() string {
-	var b strings.Builder
-	b.WriteString(helpStyle.Render("─ "+t(m.lang, "main_menu")+" ─") + "\n")
-	b.WriteString(keyStyle.Render("2") + t(m.lang, "main_settings") + "\n")
-	b.WriteString(keyStyle.Render("3") + t(m.lang, "main_help") + "\n")
-	if !m.setupDone {
-		b.WriteString(keyStyle.Render("4") + t(m.lang, "main_setup") + "\n")
+func (m Model) viewMenuLink() string {
+	line := keyStyle.Render("1") + "  " + arrowStyle.Render("▸") + "  " + fieldLabelOn.Render(t(m.lang, "main_more"))
+	if m.branchStatus != "" {
+		return line + "\n\n" + successStyle.Render(m.branchStatus)
 	}
-	b.WriteString(keyStyle.Render("5") + t(m.lang, "main_update") + "\n")
-	b.WriteString(keyStyle.Render("6") + t(m.lang, "main_branch") + "\n")
-	b.WriteString(keyStyle.Render("7") + t(m.lang, "main_uninstall") + "\n")
-	b.WriteString(keyStyle.Render("8") + t(m.lang, "main_report") + "\n")
+	return line
+}
+
+func (m Model) menuItemIDs() []string {
+	ids := []string{"settings", "help"}
+	if !m.setupDone {
+		ids = append(ids, "setup")
+	}
+	return append(ids, "update", "branch", "uninstall", "report")
+}
+
+func (m Model) menuItemLabel(id string) string {
+	switch id {
+	case "settings":
+		return t(m.lang, "main_settings")
+	case "help":
+		return t(m.lang, "main_help")
+	case "setup":
+		return t(m.lang, "main_setup")
+	case "update":
+		return t(m.lang, "main_update")
+	case "branch":
+		return t(m.lang, "main_branch")
+	case "uninstall":
+		return t(m.lang, "main_uninstall")
+	case "report":
+		return t(m.lang, "main_report")
+	default:
+		return ""
+	}
+}
+
+func (m Model) viewMenuItems(start int) string {
+	var b strings.Builder
+	n := start
+	for _, id := range m.menuItemIDs() {
+		b.WriteString(keyStyle.Render(strconv.Itoa(n)) + m.menuItemLabel(id) + "\n")
+		n++
+	}
 	b.WriteString(keyStyle.Render("q") + t(m.lang, "main_quit") + "\n")
 	if m.branchStatus != "" {
 		b.WriteString("\n")
 		b.WriteString(successStyle.Render(m.branchStatus))
 	}
+	return b.String()
+}
+
+func (m Model) viewMenu() string {
+	var b strings.Builder
+	b.WriteString(m.pageHeader(t(m.lang, "main_menu")))
+	b.WriteString("\n")
+	b.WriteString(m.viewMenuItems(1))
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render(t(m.lang, "main_select")))
 	return b.String()
 }

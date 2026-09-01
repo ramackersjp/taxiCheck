@@ -101,24 +101,48 @@ func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 	switch m.screen {
 	case screenMain:
 		k := leadingKey(content)
-		switch k {
-		case "2", "3", "4", "5", "6", "7", "8", "q":
-			return m.openMenu(k)
-		}
 		if m.setupDone {
+			if m.showSuggest {
+				for _, s := range m.suggestions {
+					if s.Display != "" && strings.Contains(content, truncateDisplay(s.Display, m.contentWidth()-8)) {
+						return m.clickCalc(lines, x, y, content)
+					}
+				}
+			}
+			if clickIsMenuLink(content, k, t(m.lang, "main_more")) {
+				return m.goMenu()
+			}
+			if k == "q" {
+				return m, tea.Quit
+			}
 			return m.clickCalc(lines, x, y, content)
 		}
 		if k != "" {
 			return m.openMenu(k)
 		}
+	case screenMenu:
+		k := leadingKey(content)
+		if k == "q" {
+			return m, tea.Quit
+		}
+		if k != "" {
+			return m.applyMenuDigit(k, 1)
+		}
 	case screenHelp:
-		if k := leadingKey(content); k != "" {
-			switch k {
-			case "1", "2", "3", "4", "5", "6", "7", "8", "q":
-				return m.openMenu(k)
+		k := leadingKey(content)
+		if clickIsMenuLink(content, k, t(m.lang, "main_more")) || strings.Contains(content, strings.TrimSpace(t(m.lang, "help_menu"))) {
+			return m.goMenu()
+		}
+		for _, id := range m.menuItemIDs() {
+			lab := strings.TrimSpace(m.menuItemLabel(id))
+			if lab != "" && strings.Contains(content, lab) {
+				return m.openMenuItem(id)
 			}
 		}
-		if k := leadingKey(content); k != "" {
+		if k == "q" {
+			return m, tea.Quit
+		}
+		if k != "" {
 			return m.handleKey(keyMsg(k))
 		}
 		if content != "" {
@@ -204,6 +228,16 @@ func (m Model) clickIsMode(lines []string, x, y int) bool {
 		if c := colOf(strings.ToLower(lines[y]), "f2"); c >= 0 {
 			return x >= c-1 && x <= c+3
 		}
+	}
+	return false
+}
+
+func clickIsMenuLink(content, key, menuWord string) bool {
+	if menuWord == "" {
+		return false
+	}
+	if strings.Contains(content, menuWord) && (key == "1" || strings.Contains(content, "▸")) {
+		return true
 	}
 	return false
 }

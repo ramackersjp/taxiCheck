@@ -23,7 +23,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Switch between dev and stable branches from the TUI
 - Two-step uninstall confirmation for safety
 - Omarchy Quattro bar widget that launches the app from the desktop bar
-- Report an issue from the TUI (menu option 8) with a description and error output,
+- Report an issue from the TUI (menu item 6) with a description and error output,
   saved to a local log and optionally filed on GitHub via the `gh` CLI
 
 ## Installation
@@ -83,7 +83,7 @@ Use `git branch --show-current` to confirm you are on the stable branch.
 > git checkout dev   # may already be checked out after clone
 > go build -o taxiprijs ./cmd/taxiprijs
 > ```
-> The `dev` branch is chaotic and may break at any time. You can also switch branches from within the app (menu option **6**).
+> The `dev` branch is chaotic and may break at any time. You can also switch branches from within the app (menu item **4**).
 
 ### Prerequisites
 
@@ -133,16 +133,19 @@ On first launch, the application will perform initial setup:
 
 ### Main Menu
 
-After setup, the home screen is the fare form (start, destination, passengers, with live address suggestions). Other options sit underneath. Subpages have a yellow **X** at the top right of the content panel to return home.
+After setup, the home screen is the fare form (start, destination, passengers, with live address suggestions). Under the form is **`1 ▸ Menu`**: click it or press **1** (Esc first if a field is focused) to open the menu. Subpages have a yellow **X** at the top right of the content panel to return home.
 
-- **2** - Settings
-- **3** - Help/Manual
-- **4** - Initial Setup (first run only)
-- **5** - Check for Updates
-- **6** - Switch Branch
-- **7** - Uninstall
-- **8** - Report Issue
-- **q** - Quit (when the fare fields are not focused; Esc first)
+On the menu page, numbering starts at 1:
+
+- **1** - Settings
+- **2** - Help/Manual
+- **3** - Check for Updates
+- **4** - Switch Branch
+- **5** - Uninstall
+- **6** - Report Issue
+- **q** - Quit
+
+(If setup is not finished yet, Initial Setup is inserted as item 3 and the rest shift down.)
 
 ### Calculating a Fare
 
@@ -155,14 +158,14 @@ After setup, the home screen is the fare form (start, destination, passengers, w
 
 ### Checking for Updates
 
-1. Press **5** from the main menu
+1. Open **Menu** (`1 ▸ Menu`), then press **3** (Check for Updates)
 2. On a stable release branch, the app compares the running version against the latest GitHub release. On `dev`, it fetches the remote and reports how many commits the local branch is behind
 3. If an update is available, press **u** to pull it via `git pull`; the app is rebuilt and the new binary is installed automatically (restart the app to run it)
 4. Press **r** to re-check
 
 ### Switching Branches
 
-1. Press **6** from the main menu
+1. Open **Menu**, then press **4** (Switch Branch)
 2. Use ↑/↓ to select a branch
 3. Press **Space** to switch to the selected branch
 4. Available branches: `dev` and all stable release branches (e.g. `v1.1.0`)
@@ -177,7 +180,7 @@ Local (uncommitted) changes are automatically stashed before the switch and rest
 
 ### Reporting Issues
 
-1. Press **8** from the main menu
+1. Open **Menu**, then press **6** (Report Issue)
 2. Describe the problem (what happened, what you expected)
 3. Paste the error output into the **Error output** field (essential for debugging across distros/OSes)
 4. Press **Enter** to submit
@@ -199,7 +202,7 @@ remote: the issue is simply saved locally.
 
 ### Uninstalling
 
-1. Press **7** from the main menu
+1. Open **Menu**, then press **5** (Uninstall)
 2. First confirmation: "Are you sure?" - press **y** to continue
 3. Second confirmation: "Are you REALLY sure?" - press **y** to uninstall
 4. The app removes the binary, desktop entry, man page, configuration, and the Omarchy (QML) plugin
@@ -210,7 +213,8 @@ remote: the issue is simply saved locally.
 
 | Key | Action |
 |-----|--------|
-| 1-8 | Select menu option |
+| 1 | Open Menu from home (Esc first if a fare field is focused) |
+| 1-6 | Select an item on the menu page |
 | Tab | Next input field |
 | Shift+Tab | Previous input field |
 | Enter | Submit/Save / select address suggestion |
@@ -285,7 +289,7 @@ You can edit the TOML file directly with any text editor. Changes will be loaded
 
 ### Settings Screen
 
-Access Settings from the main menu (option 2):
+Access Settings from the menu (item 1):
 
 1. Language
 2. **Git & GitHub** — status of Git, GitHub CLI, and GitHub login. Keys: **I** install Git, **G** install `gh`, **L** log in (browser), **A** create a GitHub account (browser), **Y** install everything that is missing. Enter continues to pricing
@@ -466,7 +470,7 @@ MIT License - see [LICENSE](LICENSE) file.
 
 On Windows (installer), uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
 
-On Linux/macOS, the easiest way is from within the running app (menu option **7**) or via `make uninstall` from the source directory:
+On Linux/macOS, the easiest way is from within the running app (menu item **5**) or via `make uninstall` from the source directory:
 
 ```bash
 # From the source directory (recommended)

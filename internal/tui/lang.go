@@ -18,7 +18,7 @@ var translations = map[string]map[string]string{
 		"main_quit":      " Quit",
 		"main_select":    "Select an option",
 		"main_more":      "Menu",
-		"calc_help_home": "Tab: next field | F2: route | Enter: calculate | Esc: menu keys",
+		"calc_help_home": "Tab: next field | F2: route | Enter: calculate | 1: menu | Esc: blur",
 
 		// Setup
 		"setup_title":       "Initial Setup",
@@ -68,6 +68,9 @@ var translations = map[string]map[string]string{
 		// Help
 		"help_title":              "Help & Manual",
 		"help_controls":           "Keyboard Controls:",
+		"help_home_title":         "Home:",
+		"help_menu":               " - Menu",
+		"help_menu_title":         "From the menu:",
 		"help_calc":               " - Calculate Fare",
 		"help_settings":           " - Settings",
 		"help_help":               " - Help/Manual",
@@ -96,11 +99,11 @@ var translations = map[string]map[string]string{
 		"help_pricing_km":         "  Per Km: Cost per kilometer",
 		"help_pricing_time":       "  Per Minute: Cost per minute of ride",
 		"help_update_howto_title": "Installing updates:",
-		"help_update_howto_1":     "  1. Menu 5: press U to pull",
+		"help_update_howto_1":     "  1. Menu → Check for Updates: press U to pull",
 		"help_update_howto_2":     "  2. Then F3: Install latest version",
 		"help_update_howto_3":     "  Always pull first, then F3.",
-		"help_branch_howto":       "Switch branch (menu 6) loads that version. No password.",
-		"help_return":             "Press Esc or Enter to return to main menu",
+		"help_branch_howto":       "Switch branch (menu item 4) loads that version. No password.",
+		"help_return":             "Press Esc or Enter to return home",
 
 		// Calculate
 		"calc_title":                  "Calculate Fare",
@@ -211,7 +214,7 @@ var translations = map[string]map[string]string{
 		"main_quit":      " Afsluiten",
 		"main_select":    "Kies een optie",
 		"main_more":      "Menu",
-		"calc_help_home": "Tab: volgend veld | F2: route | Enter: berekenen | Esc: menutoetsen",
+		"calc_help_home": "Tab: volgend veld | F2: route | Enter: berekenen | 1: menu | Esc: velden loslaten",
 
 		// Setup
 		"setup_title":       "Installatie",
@@ -261,6 +264,9 @@ var translations = map[string]map[string]string{
 		// Help
 		"help_title":              "Help & Handleiding",
 		"help_controls":           "Toetsenbord Besturing:",
+		"help_home_title":         "Home:",
+		"help_menu":               " - Menu",
+		"help_menu_title":         "In het menu:",
 		"help_calc":               " - Prijs Berekenen",
 		"help_settings":           " - Instellingen",
 		"help_help":               " - Help/Handleiding",
@@ -289,11 +295,11 @@ var translations = map[string]map[string]string{
 		"help_pricing_km":         "  Per Km: Kosten per kilometer",
 		"help_pricing_time":       "  Per Minuut: Kosten per minuut rit",
 		"help_update_howto_title": "Updates installeren:",
-		"help_update_howto_1":     "  1. Menu 5: druk U om te pullen",
+		"help_update_howto_1":     "  1. Menu → Controleer op Updates: druk U om te pullen",
 		"help_update_howto_2":     "  2. Daarna F3: Installeer nieuwste versie",
 		"help_update_howto_3":     "  Altijd eerst pullen, daarna F3.",
-		"help_branch_howto":       "Branch wisselen (menu 6) laadt die versie. Geen wachtwoord.",
-		"help_return":             "Druk op Esc of Enter om terug te gaan naar het hoofdmenu",
+		"help_branch_howto":       "Branch wisselen (menu-item 4) laadt die versie. Geen wachtwoord.",
+		"help_return":             "Druk op Esc of Enter om naar home te gaan",
 
 		// Calculate
 		"calc_title":                  "Prijs Berekenen",
