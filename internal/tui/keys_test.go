@@ -70,17 +70,18 @@ func TestCalcTypingQDoesNotQuit(t *testing.T) {
 	in := textinput.New()
 	in.Focus()
 	m := Model{
-		screen:   screenCalc,
-		lang:     "en",
-		inputs:   []textinput.Model{in, textinput.New(), textinput.New()},
-		focusIdx: 0,
+		screen:     screenMain,
+		lang:       "en",
+		setupDone:  true,
+		calcInputs: []textinput.Model{in, textinput.New(), textinput.New()},
+		calcFocus:  0,
 	}
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	if quits(cmd) {
 		t.Fatal("typing q in an address field must not quit")
 	}
-	if updated.(Model).screen != screenCalc {
-		t.Fatalf("screen=%d, want calc", updated.(Model).screen)
+	if updated.(Model).screen != screenMain {
+		t.Fatalf("screen=%d, want main", updated.(Model).screen)
 	}
 }
 

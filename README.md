@@ -133,7 +133,8 @@ On first launch, the application will perform initial setup:
 
 ### Main Menu
 
-- **1** - Calculate Fare
+After setup, the home screen is the fare form (start, destination, passengers, with live address suggestions). Other options sit underneath. Subpages have a yellow **X** at the top right of the content panel to return home.
+
 - **2** - Settings
 - **3** - Help/Manual
 - **4** - Initial Setup (first run only)
@@ -141,7 +142,7 @@ On first launch, the application will perform initial setup:
 - **6** - Switch Branch
 - **7** - Uninstall
 - **8** - Report Issue
-- **q** - Quit
+- **q** - Quit (when the fare fields are not focused; Esc first)
 
 ### Calculating a Fare
 
