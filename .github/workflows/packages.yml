@@ -35,13 +35,11 @@ jobs:
       options: --privileged
     steps:
       - uses: actions/checkout@v4
-      - name: Create dist dir for the bundle
-        run: mkdir -p dist
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          bundle: dist/taxiprijs-flatpak.flatpak
+          bundle: taxiprijs-flatpak.flatpak
           manifest-path: flatpak/dev.ramackers.TaxiCheck.yaml
       - uses: actions/upload-artifact@v4
         with:
           name: taxiprijs-flatpak
-          path: dist/taxiprijs-flatpak.flatpak
+          path: taxiprijs-flatpak.flatpak
