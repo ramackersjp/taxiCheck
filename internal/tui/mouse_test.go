@@ -147,6 +147,73 @@ func TestMouseIgnoresMotion(t *testing.T) {
 	}
 }
 
+func TestMouseReleaseOpensCalc(t *testing.T) {
+	m := sized("en")
+	x, y := findText(m, "Calculate Fare")
+	updated, _ := m.Update(tea.MouseMsg{
+		X:      x,
+		Y:      y,
+		Action: tea.MouseActionRelease,
+		Button: tea.MouseButtonLeft,
+	})
+	if updated.(Model).screen != screenCalc {
+		t.Fatalf("release click screen=%d, want calc", updated.(Model).screen)
+	}
+}
+
+func TestMouseClickOffByOneStillHits(t *testing.T) {
+	m := sized("en")
+	x, y := findText(m, "Calculate Fare")
+	lines := strings.Split(ansi.Strip(m.View()), "\n")
+	ty := y - 1
+	if ty < 0 || strings.TrimSpace(contentOf(lines[ty])) != "" {
+		ty = y + 2
+		if ty >= len(lines) || strings.TrimSpace(contentOf(lines[ty])) != "" {
+			t.Skip("no blank line next to the menu item")
+		}
+	}
+	updated, _ := m.Update(tea.MouseMsg{
+		X:      x,
+		Y:      ty,
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+	})
+	if updated.(Model).screen != screenCalc {
+		t.Fatalf("blank-line click at Y=%d (item %d) screen=%d, want calc", ty, y, updated.(Model).screen)
+	}
+}
+
+func TestMouseClickRowMarginHitsKey(t *testing.T) {
+	m := sized("en")
+	_, y := findText(m, "Calculate Fare")
+	updated, _ := m.Update(tea.MouseMsg{
+		X:      0,
+		Y:      y,
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+	})
+	if updated.(Model).screen != screenCalc {
+		t.Fatalf("margin click screen=%d, want calc", updated.(Model).screen)
+	}
+}
+
+func TestMousePressThenReleaseDoesNotDouble(t *testing.T) {
+	m := sized("en")
+	x, y := findText(m, "Calculate Fare")
+	updated, _ := m.Update(tea.MouseMsg{
+		X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
+	})
+	if updated.(Model).screen != screenCalc {
+		t.Fatal("press should open calc")
+	}
+	updated, _ = updated.Update(tea.MouseMsg{
+		X: x, Y: y, Action: tea.MouseActionRelease, Button: tea.MouseButtonLeft,
+	})
+	if updated.(Model).screen != screenCalc {
+		t.Fatalf("release after press should not leave calc, screen=%d", updated.(Model).screen)
+	}
+}
+
 func TestMouseClickSettings(t *testing.T) {
 	m := sized("en")
 	updated, _ := click(m, "Settings")
