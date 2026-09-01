@@ -13,6 +13,7 @@ func uninstallAppImpl() error {
 	if home != "" {
 		_ = os.Remove(filepath.Join(home, ".local", "bin", "taxiprijs"))
 		_ = os.Remove(filepath.Join(home, ".local", "share", "applications", "taxiprijs.desktop"))
+		_ = os.Remove(filepath.Join(home, ".local", "share", "icons", "hicolor", "scalable", "apps", "taxiprijs.svg"))
 		_ = os.RemoveAll(filepath.Join(home, ".taxiprijs"))
 		_ = os.RemoveAll(filepath.Join(home, ".config", "omarchy", "plugins", "jp.taxiprijs"))
 		removeOmarchyBarEntry(home)
@@ -22,6 +23,7 @@ func uninstallAppImpl() error {
 	_ = exec.Command("sudo", "-n", "rm", "-f",
 		"/usr/local/bin/taxiprijs",
 		"/usr/share/applications/taxiprijs.desktop",
+		"/usr/share/icons/hicolor/scalable/apps/taxiprijs.svg",
 		"/usr/local/share/man/man1/taxiprijs.1",
 	).Run()
 	if running := runningExecutable(); running != "" {

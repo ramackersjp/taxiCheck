@@ -1,4 +1,13 @@
 .env
 taxiprijs
+*.snap
+*.flatpak
 dist/
+parts/
+stage/
+prime/
+.flatpak-builder/
+.snapcraft/
 cmd/install/payload/
+flatpak/build-dir/
+flatpak/repo/

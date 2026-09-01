@@ -9,6 +9,7 @@ Dutch taxi fare calculator TUI application built with Go and Bubble Tea. Uses PD
 - Tests passing
 - Documentation complete
 - Cross-platform installable (Linux, macOS, Windows)
+- Snap (`taxiprijs`, core24, strict) and Flatpak (`dev.ramackers.TaxiCheck`, freedesktop 24.08) packaging
 - Omarchy Quattro bar-widget plugin
 
 ## Technology Stack
@@ -46,17 +47,27 @@ taxiprijs/
 │   └── issue_prompt.md             # Debugging workflow for GitHub issues
 ├── extras/
 │   ├── taxiprijs.desktop          # Linux desktop entry
+│   ├── taxiprijs.svg              # App icon (used by installers, snap, flatpak)
 │   └── omarchy-plugin/            # Omarchy Quattro bar-widget
 │       ├── manifest.json
 │       ├── BarWidget.qml
 │       ├── README.md
 │       └── reload-plugin.sh       # Dev helper to deploy QML changes
+├── snap/
+│   ├── snapcraft.yaml             # Snap packaging (core24, strict)
+│   └── gui/                       # Snap icon + desktop entry
+├── flatpak/
+│   ├── dev.ramackers.TaxiCheck.yaml        # Flatpak manifest (24.08)
+│   ├── dev.ramackers.TaxiCheck.desktop     # Flatpak desktop entry
+│   └── dev.ramackers.TaxiCheck.appdata.xml # Flatpak/AppStream metadata
+├── .github/workflows/
+│   └── packages.yml               # CI builds snap + flatpak on PRs to dev/releases
 ├── .env.example                   # API configuration template
 ├── .env                           # API configuration (git-ignored)
-├── .gitignore                     # Ignores .env, binary, dist/, installer payload
+├── .gitignore                     # Ignores .env, binary, dist/, parts/, installer payload
 ├── go.mod
 ├── go.sum
-├── Makefile                       # Build, install, uninstall, cross-compile, Windows installer
+├── Makefile                       # Build, install, uninstall, cross-compile, snap/flatpak, Windows installer
 ├── LICENSE
 ├── README.md
 └── taxiprijs.1                    # Man page
@@ -208,6 +219,11 @@ taxiprijs/
 - Report Issue from the menu (item 6): description + error output, saved to a local
   log at ~/.taxiprijs/logs/, and optionally filed on GitHub via the `gh` CLI. Works without
   gh/GitHub (falls back to local log only). Collects OS/distro/arch/kernel/Go info.
+- Snap packaging (`snap/snapcraft.yaml`, core24, strict; apps taxiprijs with network+home plugs)
+- Flatpak packaging (`flatpak/dev.ramackers.TaxiCheck.yaml`, freedesktop 24.08; finish-args
+  `--share=network` and `--filesystem=~/.taxiprijs:create`)
+- CI workflow `.github/workflows/packages.yml` builds the snap and flatpak on PRs/merges to
+  `dev` and on `v*` tags, uploading both as artifacts
 
 ## Installation
 
@@ -223,6 +239,10 @@ taxiprijs
 # Run from launcher (Omarchy / Ubuntu app grid)
 # TaxiCheck appears as a desktop app
 
+# Build packaging artifacts
+make build-snap                 # dist/taxiprijs_VVERSION_arch.snap (snapcraft, core24)
+make build-flatpak              # dist/taxiprijs-flatpak-VVERSION.flatpak (update 24.08)
+
 # Cross-compile for other platforms
 make build-all                 # all platforms + Windows installer -> dist/
 make build-linux               # Linux only
@@ -230,6 +250,22 @@ make build-macos               # macOS only
 make build-windows             # Windows portable .exe
 make build-windows-installer   # dist/install-taxicheck-vVERSION-windows.exe
 ```
+
+### Snap
+
+TaxiCheck is distributed as the `taxiprijs` snap (core24, strict confinement,
+`network` + `home` plugs). When published: `sudo snap install taxiprijs` (run with
+`taxiprijs`). Build locally with `make build-snap` and install the artifact with
+`sudo snap install --dangerous dist/taxiprijs_VVERSION_arch.snap`.
+
+### Flatpak
+
+TaxiCheck is distributed as the `dev.ramackers.TaxiCheck` flatpak (app id,
+freedesktop 24.08). When published: `flatpak install flathub dev.ramackers.TaxiCheck`
+(run with `flatpak run dev.ramackers.TaxiCheck`). Build locally with
+`make build-flatpak` to produce `dist/taxiprijs-flatpak-VVERSION.flatpak`. The Go
+toolchain is downloaded during build (the 24.08 SDK's bundled Go extension is too old),
+and `--disable-rofiles-fuse` is required when building inside a container.
 
 ### Omarchy Quattro Bar Widget
 
@@ -273,4 +309,6 @@ make build-windows             # portable dist/taxiprijs-windows-amd64.exe
 
 ```sh
 make uninstall
+sudo snap remove taxiprijs                                 # snap installs
+flatpak uninstall dev.ramackers.TaxiCheck                  # flatpak installs
 ```

@@ -25,6 +25,8 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Omarchy Quattro bar widget that launches the app from the desktop bar
 - Report an issue from the TUI (menu item 6) with a description and error output,
   saved to a local log and optionally filed on GitHub via the `gh` CLI
+- Omnibus packaging: native binaries for Linux/macOS/Windows, a Windows installer, a
+  **snap** (`taxiprijs`), and a **flatpak** (`dev.ramackers.TaxiCheck`)
 
 ## Installation
 
@@ -51,6 +53,42 @@ install-taxicheck-v2.0.0-windows.exe /S
 Uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
 
 To rebuild the installer from source: `make build-windows-installer` (writes `dist/install-taxicheck-v2.0.0-windows.exe`).
+
+### Snap
+
+TaxiCheck is distributed as a **snap** (`taxiprijs`). Install it from the Snap Store when released (currently the snap is built but publishing is pending):
+
+```bash
+sudo snap install taxiprijs
+```
+
+Run it from a terminal (`taxiprijs`) or from the application menu. The snap uses **strict confinement**: it is granted `network` (for routing/geocoding) and `home` (so it can read/write `~/.taxiprijs`).
+
+To build and install the snap locally from source (requires `snapcraft`):
+
+```bash
+make build-snap              # writes dist/taxiprijs_2.0.0_amd64.snap
+sudo snap install --dangerous dist/taxiprijs_2.0.0_amd64.snap
+```
+
+### Flatpak
+
+TaxiCheck is also distributed as a **flatpak** (app id `dev.ramackers.TaxiCheck`). Install it from [Flathub](https://flathub.org) when published (currently the flatpak is built but publishing is pending):
+
+```bash
+flatpak install flathub dev.ramackers.TaxiCheck
+flatpak run dev.ramackers.TaxiCheck
+```
+
+The flatpak is granted `--share=network` (routing/geocoding) and `--filesystem=~/.taxiprijs:create` (its own config directory).
+
+To build the flatpak locally from source (requires `flatpak-builder` and the freedesktop 24.08 SDK):
+
+```bash
+flatpak install flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+make build-flatpak          # writes dist/taxiprijs-flatpak-2.0.0.flatpak
+flatpak install --user dist/taxiprijs-flatpak-2.0.0.flatpak
+```
 
 ### From Source
 
@@ -376,11 +414,21 @@ taxiprijs/
 │       └── logo.go              # Front-facing taxi logo + date/time/license column
 ├── extras/
 │   ├── taxiprijs.desktop        # Linux desktop entry
+│   ├── taxiprijs.svg            # App icon (used by installers, snap, flatpak)
 │   └── omarchy-plugin/          # Omarchy Quattro bar widget
 │       ├── manifest.json
 │       ├── BarWidget.qml
 │       ├── README.md
 │       └── reload-plugin.sh     # Dev helper to deploy QML changes
+├── snap/
+│   ├── snapcraft.yaml           # Snap packaging (core24, strict)
+│   └── gui/                     # Snap icon + desktop entry
+├── flatpak/
+│   ├── dev.ramackers.TaxiCheck.yaml        # Flatpak manifest (24.08)
+│   ├── dev.ramackers.TaxiCheck.desktop     # Flatpak desktop entry
+│   └── dev.ramackers.TaxiCheck.appdata.xml # Flatpak/AppStream metadata
+├── .github/workflows/
+│   └── packages.yml             # CI builds snap + flatpak on PRs to dev/releases
 ├── prompts/
 │   ├── prompt.md                # Project knowledge
 │   ├── push_prompt.md           # Git workflow (branch/commit/push)
@@ -391,7 +439,7 @@ taxiprijs/
 ├── go.mod
 ├── go.sum
 ├── LICENSE
-├── Makefile                     # Build, install, uninstall, cross-compile, Windows installer
+├── Makefile                     # Build, install, uninstall, cross-compile, snap/flatpak, Windows installer
 ├── README.md
 └── taxiprijs.1                  # Man page
 ```
@@ -480,6 +528,13 @@ make uninstall
 ```
 
 This removes the binary, desktop entry, man page, configuration, and the Omarchy (QML/bar widget) plugin for you.
+
+To remove a **snap** or **flatpak** installation, use the platform uninstaller:
+
+```bash
+sudo snap remove taxiprijs      # snap
+flatpak uninstall dev.ramackers.TaxiCheck   # flatpak
+```
 
 ### Manual Uninstall
 

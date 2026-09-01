@@ -1,0 +1,51 @@
+# Flatpak manifest for TaxiCheck.
+#
+# Build locally (from the repository root):
+#   flatpak-builder --user --install --force-clean build-dir \
+#     flatpak/dev.ramackers.TaxiCheck.yaml
+#   flatpak build-bundle ~/.local/share/flatpak/repo \
+#     dist/taxiprijs-flatpak.flatpak dev.ramackers.TaxiCheck
+#
+# Run: flatpak run dev.ramackers.TaxiCheck
+#
+# Publishing to Flathub is a separate step done on a release (see the README).
+
+id: dev.ramackers.TaxiCheck
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: taxiprijs
+
+finish-args:
+  # Network for OSRM routing, PDOK and Nominatim geocoding.
+  - --share=network
+  # Read/write access to the app's own config directory (~/.taxiprijs).
+  - --filesystem=~/.taxiprijs:create
+
+modules:
+  - name: taxiprijs
+    buildsystem: simple
+    build-options:
+      build-args:
+        - --share=network
+      env:
+        GOFLAGS: '-trimpath'
+    build-commands:
+      # The freedesktop SDK's Go extension is too old (1.25.x); download the
+      # version required by go.mod into /app so the binary can be built, then
+      # remove the toolchain again — only the compiled binary ships at runtime.
+      - |
+        curl -fsSL https://go.dev/dl/go1.27.0.linux-amd64.tar.gz \
+          | tar -xz -C /app
+        export PATH="/app/go/bin:$PATH"
+        export GOTOOLCHAIN=local
+        go build -ldflags "-s -w" -o /app/bin/taxiprijs ./cmd/taxiprijs
+      - rm -rf /app/go   # remove toolchain; only the compiled binary is needed at runtime
+      - install -Dm644 flatpak/dev.ramackers.TaxiCheck.desktop /app/share/applications/dev.ramackers.TaxiCheck.desktop
+      - install -Dm644 extras/taxiprijs.svg /app/share/icons/hicolor/scalable/apps/dev.ramackers.TaxiCheck.svg
+      - install -Dm644 taxiprijs.1 /app/share/man/man1/taxiprijs.1
+      - install -Dm644 flatpak/dev.ramackers.TaxiCheck.appdata.xml /app/share/metainfo/dev.ramackers.TaxiCheck.appdata.xml
+      - install -Dm644 LICENSE /app/share/licenses/dev.ramackers.TaxiCheck/LICENSE
+    sources:
+      - type: dir
+        path: ..
