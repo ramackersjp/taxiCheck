@@ -44,4 +44,24 @@ var (
 	arrowStyle = lipgloss.NewStyle().
 			Foreground(黄色).
 			Bold(true)
+
+	closeStyle = lipgloss.NewStyle().
+			Foreground(黑色).
+			Background(黄色).
+			Bold(true).
+			Padding(0, 1)
+
+	fieldLabelOn = lipgloss.NewStyle().
+			Foreground(黄色).
+			Bold(true)
+
+	fieldBoxOn = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(黄色).
+			Padding(0, 1)
+
+	fieldBoxOff = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(灰色).
+			Padding(0, 1)
 )

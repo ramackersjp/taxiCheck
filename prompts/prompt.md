@@ -87,8 +87,8 @@ taxiprijs/
 - All addresses limited to the Netherlands
 
 ## TUI Screens
-1. Main Menu - Navigation hub with version display
-2. Calculate Fare - Enter start/destination address and passengers, API calculates route and price
+1. Main Menu - After setup: fare form (addresses + suggestions) on top, other options below
+2. Calculate Fare - Same form as the home screen (also reachable via menu 1)
 3. Settings - Language, Git/GitHub CLI/GitHub login (install + manage), then pricing rates
 4. Help/Manual - Keyboard controls and documentation
 5. Initial Setup - First-run: language, optional Git/GitHub CLI/GitHub login (N skips), then pricing

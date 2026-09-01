@@ -227,23 +227,25 @@ type asyncMsg struct {
 }
 
 type Model struct {
-	screen    screen
-	config    *config.Config
-	inputs    []textinput.Model
-	focusIdx  int
-	passGroup int
-	calcInput calc.FareInput
-	result    *calc.FareResult
-	routeInfo *routing.RouteResult
-	startAddr string
-	endAddr   string
-	err       string
-	lang      string
-	setupStep int
-	loading   bool
-	routeMode string
-	width     int
-	height    int
+	screen     screen
+	config     *config.Config
+	inputs     []textinput.Model
+	calcInputs []textinput.Model
+	focusIdx   int
+	calcFocus  int
+	passGroup  int
+	calcInput  calc.FareInput
+	result     *calc.FareResult
+	routeInfo  *routing.RouteResult
+	startAddr  string
+	endAddr    string
+	err        string
+	lang       string
+	setupStep  int
+	loading    bool
+	routeMode  string
+	width      int
+	height     int
 
 	suggestions   []routing.AddressSuggestion
 	suggestionIdx int
@@ -306,18 +308,23 @@ func NewModel() Model {
 		lang = "en"
 	}
 
-	return Model{
+	m := Model{
 		screen:    screenMain,
 		config:    cfg,
 		lang:      lang,
 		routeMode: "fastest",
 		setupDone: true,
 	}
+	m.ensureCalcInputs()
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
 	// Re-enable after alt-screen: Linux terminals (kitty/foot/alacritty)
 	// reset DEC mouse modes when entering the alt buffer or on first resize.
+	if m.setupDone {
+		return tea.Batch(tea.EnableMouseCellMotion, textinput.Blink)
+	}
 	return tea.EnableMouseCellMotion
 }
 
@@ -368,9 +375,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		inputW := m.inputWidth()
-		for i := range m.inputs {
+		for i := range m.calcInputs {
 			if i < 2 {
-				m.inputs[i].Width = inputW
+				m.calcInputs[i].Width = inputW
 			}
 		}
 		return m, tea.EnableMouseCellMotion
@@ -536,6 +543,8 @@ func (m Model) isTyping() bool {
 	switch m.screen {
 	case screenCalc:
 		return true
+	case screenMain:
+		return m.setupDone && m.calcFocused()
 	case screenSetup:
 		return m.setupStep == stepPricing
 	case screenSettings:
@@ -596,30 +605,24 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.branchStatus = ""
-	switch msg.String() {
+	if m.screen == screenMain && m.setupDone && m.calcFocused() {
+		return m.updateCalc(msg)
+	}
+	if m.setupDone && (msg.String() == "1" || msg.String() == "tab") {
+		m.ensureCalcInputs()
+		return m.focusCalcAt(0)
+	}
+	return m.openMenu(msg.String())
+}
+
+func (m Model) openMenu(key string) (tea.Model, tea.Cmd) {
+	switch key {
 	case "q":
 		return m, tea.Quit
 	case "1":
-		m.screen = screenCalc
-		m.calcInput = calc.FareInput{}
-		m.inputs = make([]textinput.Model, 3)
-		inputW := m.inputWidth()
-		for i := range m.inputs {
-			m.inputs[i] = textinput.New()
-			m.inputs[i].CharLimit = 80
-			m.inputs[i].Width = inputW
-		}
-		m.inputs[0].Placeholder = t(m.lang, "calc_placeholder_start")
-		m.inputs[0].Focus()
-		m.inputs[1].Placeholder = t(m.lang, "calc_placeholder_end")
-		m.inputs[2].Placeholder = t(m.lang, "calc_placeholder_passengers")
-		m.inputs[2].CharLimit = 2
-		m.inputs[2].Width = 5
-		m.focusIdx = 0
-		m.suggestFetching = false
-		m.suggestPending = false
-		m.suggestGen++
-		return m, textinput.Blink
+		m.ensureCalcInputs()
+		m.screen = screenMain
+		return m.focusCalcAt(0)
 	case "2":
 		m.screen = screenSettings
 		m.settingsStep = 0
@@ -629,6 +632,7 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "3":
 		m.screen = screenHelp
+		return m, nil
 	case "4":
 		if !m.setupDone {
 			m.screen = screenSetup
@@ -920,15 +924,15 @@ func (m Model) updateUninstall(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // While one is in flight no new request is started; input typed in the
 // meantime is fetched as soon as the in-flight result arrives.
 func (m Model) startSuggestionFetch() (tea.Model, tea.Cmd) {
-	if m.focusIdx > 1 || len(m.inputs) < 2 || m.suggestFetching {
+	if m.calcFocus > 1 || len(m.calcInputs) < 2 || m.suggestFetching {
 		return m, nil
 	}
-	q := m.inputs[m.focusIdx].Value()
+	q := m.calcInputs[m.calcFocus].Value()
 	if len(strings.TrimSpace(q)) < 2 {
 		return m, nil
 	}
 	m.suggestFetching = true
-	inputIdx := m.focusIdx
+	inputIdx := m.calcFocus
 	gen := m.suggestGen
 	return m, func() tea.Msg {
 		suggests, err := routing.SuggestAddresses(q)
@@ -980,25 +984,14 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		if len(m.inputs) == 0 {
+		if len(m.calcInputs) == 0 {
 			return m, nil
 		}
-		m.inputs[m.focusIdx].Blur()
-		if msg.String() == "down" {
-			m.focusIdx = (m.focusIdx + 1) % len(m.inputs)
-		} else {
-			m.focusIdx = (m.focusIdx - 1 + len(m.inputs)) % len(m.inputs)
-		}
-		m.inputs[m.focusIdx].Focus()
-		m.showSuggest = false
-		m.suggestFetching = false
-		m.suggestPending = false
-		m.suggestGen++
-		return m, textinput.Blink
+		return m.focusCalcAt(nextCalcIndex(m.calcFocus, len(m.calcInputs), msg.String() == "down"))
 	case "enter":
 		if m.showSuggest && m.suggestionIdx < len(m.suggestions) {
 			sel := m.suggestions[m.suggestionIdx]
-			m.inputs[m.focusIdx].SetValue(sel.Display)
+			m.calcInputs[m.calcFocus].SetValue(sel.Display)
 			m.showSuggest = false
 			m.suggestions = nil
 			m.suggestFetching = false
@@ -1014,42 +1007,34 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.suggestGen++
 			return m, nil
 		}
+		if m.screen == screenMain {
+			return m.blurCalc(), nil
+		}
 		m.screen = screenMain
 		m.err = ""
 		m.suggestFetching = false
 		m.suggestPending = false
 		m.suggestGen++
+		m.ensureCalcInputs()
 		return m, nil
 	case "tab", "shift+tab":
 		m.showSuggest = false
 		m.suggestions = nil
-		if len(m.inputs) == 0 {
+		if len(m.calcInputs) == 0 {
 			return m, nil
 		}
-		m.inputs[m.focusIdx].Blur()
-		if msg.String() == "tab" {
-			m.focusIdx = (m.focusIdx + 1) % len(m.inputs)
-		} else {
-			m.focusIdx = (m.focusIdx - 1 + len(m.inputs)) % len(m.inputs)
-		}
-		m.inputs[m.focusIdx].Focus()
-		m.suggestFetching = false
-		m.suggestPending = false
-		m.suggestGen++
-		return m, textinput.Blink
+		return m.focusCalcAt(nextCalcIndex(m.calcFocus, len(m.calcInputs), msg.String() == "tab"))
 	}
 
-	for i := range m.inputs {
-		if i == m.focusIdx {
-			oldVal := m.inputs[i].Value()
-			m.inputs[i], _ = m.inputs[i].Update(msg)
-			newVal := m.inputs[i].Value()
+	for i := range m.calcInputs {
+		if i == m.calcFocus {
+			oldVal := m.calcInputs[i].Value()
+			m.calcInputs[i], _ = m.calcInputs[i].Update(msg)
+			newVal := m.calcInputs[i].Value()
 			if i < 2 && newVal != oldVal {
 				m.suggestInput = i
 				m.suggestGen++
 				if len(newVal) >= 2 {
-					// Instant feedback by narrowing the current list while
-					// the debounced PDOK request runs in the background.
 					if len(m.lastInputVal) >= 2 {
 						m.narrowSuggestions(m.lastInputVal, newVal)
 					}
@@ -1072,33 +1057,28 @@ func (m Model) updateCalc(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func nextCalcIndex(cur, n int, forward bool) int {
+	if n <= 0 {
+		return 0
+	}
+	if forward {
+		return (cur + 1) % n
+	}
+	return (cur - 1 + n) % n
+}
+
 func (m Model) updateResult(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
 	case "esc", "enter":
-		m.screen = screenCalc
+		m.screen = screenMain
 		m.result = nil
 		m.routeInfo = nil
 		m.calcInput = calc.FareInput{}
-		m.inputs = make([]textinput.Model, 3)
-		inputW := m.inputWidth()
-		for i := range m.inputs {
-			m.inputs[i] = textinput.New()
-			m.inputs[i].CharLimit = 80
-			m.inputs[i].Width = inputW
-		}
-		m.inputs[0].Placeholder = t(m.lang, "calc_placeholder_start")
-		m.inputs[0].Focus()
-		m.inputs[1].Placeholder = t(m.lang, "calc_placeholder_end")
-		m.inputs[2].Placeholder = t(m.lang, "calc_placeholder_passengers")
-		m.inputs[2].CharLimit = 2
-		m.inputs[2].Width = 5
-		m.focusIdx = 0
-		m.suggestFetching = false
-		m.suggestPending = false
-		m.suggestGen++
-		return m, textinput.Blink
+		m.err = ""
+		m.ensureCalcInputs()
+		return m.focusCalcAt(0)
 	}
 	return m, nil
 }
@@ -1447,14 +1427,14 @@ func (m *Model) renderReportResult(res issue.Result) {
 }
 
 func (m Model) startCalculation() (tea.Model, tea.Cmd) {
-	if len(m.inputs) < 3 {
+	if len(m.calcInputs) < 3 {
 		m.err = t(m.lang, "err_invalid_input")
 		return m, nil
 	}
 
-	startAddr := strings.TrimSpace(m.inputs[0].Value())
-	endAddr := strings.TrimSpace(m.inputs[1].Value())
-	passengersStr := strings.TrimSpace(m.inputs[2].Value())
+	startAddr := strings.TrimSpace(m.calcInputs[0].Value())
+	endAddr := strings.TrimSpace(m.calcInputs[1].Value())
+	passengersStr := strings.TrimSpace(m.calcInputs[2].Value())
 
 	if startAddr == "" {
 		m.err = t(m.lang, "err_empty_start")
@@ -1571,7 +1551,8 @@ func (m Model) saveSetup() (tea.Model, tea.Cmd) {
 	m.screen = screenMain
 	m.setupDone = true
 	m.err = ""
-	return m, nil
+	m.ensureCalcInputs()
+	return m.focusCalcAt(0)
 }
 
 func (m Model) saveSettings() (tea.Model, tea.Cmd) {
@@ -1687,26 +1668,14 @@ func (m Model) View() string {
 }
 
 func (m Model) viewMain() string {
+	if m.setupDone {
+		return m.viewFareCard() + "\n\n" + m.viewMainMenuKeys()
+	}
 	var b strings.Builder
 	b.WriteString(subtitleStyle.Render(t(m.lang, "main_menu")))
 	b.WriteString("\n\n")
 	b.WriteString(keyStyle.Render("1") + t(m.lang, "main_calc") + "\n")
-	b.WriteString(keyStyle.Render("2") + t(m.lang, "main_settings") + "\n")
-	b.WriteString(keyStyle.Render("3") + t(m.lang, "main_help") + "\n")
-	if !m.setupDone {
-		b.WriteString(keyStyle.Render("4") + t(m.lang, "main_setup") + "\n")
-	}
-	b.WriteString(keyStyle.Render("5") + t(m.lang, "main_update") + "\n")
-	b.WriteString(keyStyle.Render("6") + t(m.lang, "main_branch") + "\n")
-	b.WriteString(keyStyle.Render("7") + t(m.lang, "main_uninstall") + "\n")
-	b.WriteString(keyStyle.Render("8") + t(m.lang, "main_report") + "\n")
-	b.WriteString(keyStyle.Render("q") + t(m.lang, "main_quit") + "\n")
-
-	if m.branchStatus != "" {
-		b.WriteString("\n")
-		b.WriteString(successStyle.Render(m.branchStatus))
-	}
-
+	b.WriteString(m.viewMainMenuKeys())
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "main_select")))
 	return b.String()
@@ -1714,8 +1683,8 @@ func (m Model) viewMain() string {
 
 func (m Model) viewSetup() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "setup_title")))
-	b.WriteString("\n\n")
+	b.WriteString(m.pageHeader(t(m.lang, "setup_title")))
+	b.WriteString("\n")
 
 	if m.setupStep == stepLang {
 		b.WriteString(titleStyle.Render(t(m.lang, "setup_lang_title")))
@@ -1734,7 +1703,7 @@ func (m Model) viewSetup() string {
 	}
 
 	if m.setupStep == stepTools {
-		return m.viewTools(true)
+		return b.String() + m.viewTools(true)
 	}
 
 	for i, g := range m.config.PassengerGroups {
@@ -1764,8 +1733,8 @@ func (m Model) viewSetup() string {
 
 func (m Model) viewSettings() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "settings_title")))
-	b.WriteString("\n\n")
+	b.WriteString(m.pageHeader(t(m.lang, "settings_title")))
+	b.WriteString("\n")
 
 	if m.settingsStep == stepLang {
 		b.WriteString(titleStyle.Render(t(m.lang, "settings_lang_title")))
@@ -1784,7 +1753,7 @@ func (m Model) viewSettings() string {
 	}
 
 	if m.settingsStep == stepTools {
-		return m.viewTools(false)
+		return b.String() + m.viewTools(false)
 	}
 
 	for i, g := range m.config.PassengerGroups {
@@ -1814,8 +1783,8 @@ func (m Model) viewSettings() string {
 
 func (m Model) viewHelp() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "help_title")))
-	b.WriteString("\n\n")
+	b.WriteString(m.pageHeader(t(m.lang, "help_title")))
+	b.WriteString("\n")
 	b.WriteString(t(m.lang, "help_controls") + "\n")
 	b.WriteString("  " + keyStyle.Render("1") + t(m.lang, "help_calc") + "\n")
 	b.WriteString("  " + keyStyle.Render("2") + t(m.lang, "help_settings") + "\n")
@@ -1864,34 +1833,7 @@ func (m Model) viewHelp() string {
 }
 
 func (m Model) viewCalc() string {
-	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "calc_title")))
-	b.WriteString("\n\n")
-	if len(m.inputs) >= 3 {
-		b.WriteString(m.inputs[0].View() + "\n")
-		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_start")) + "\n")
-		if m.showSuggest && m.suggestInput == 0 {
-			b.WriteString(m.renderSuggestions())
-		}
-		b.WriteString("\n")
-		b.WriteString(m.inputs[1].View() + "\n")
-		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_end")) + "\n")
-		if m.showSuggest && m.suggestInput == 1 {
-			b.WriteString(m.renderSuggestions())
-		}
-		b.WriteString("\n")
-		b.WriteString(m.inputs[2].View() + "\n")
-		b.WriteString(helpStyle.Render("  "+t(m.lang, "calc_label_passengers")) + "\n")
-	}
-	b.WriteString("\n")
-	if m.routeMode == "fastest" {
-		b.WriteString(keyStyle.Render("F2") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_fastest")) + "\n")
-	} else {
-		b.WriteString(keyStyle.Render("F2") + " " + t(m.lang, "calc_mode") + ": " + successStyle.Render(t(m.lang, "calc_mode_shortest")) + "\n")
-	}
-	b.WriteString("\n")
-	b.WriteString(helpStyle.Render(t(m.lang, "calc_help")))
-	return b.String()
+	return m.pageHeader(t(m.lang, "calc_title")) + "\n" + m.viewFareCard()
 }
 
 func (m Model) renderSuggestions() string {
@@ -1916,7 +1858,7 @@ func (m Model) renderSuggestions() string {
 
 func (m Model) viewResult() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "result_title")))
+	b.WriteString(m.pageHeader(t(m.lang, "result_title")))
 	b.WriteString("\n\n")
 
 	b.WriteString(t(m.lang, "result_route") + "\n")
@@ -1951,7 +1893,7 @@ func (m Model) viewResult() string {
 
 func (m Model) viewUpdate() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "update_title")))
+	b.WriteString(m.pageHeader(t(m.lang, "update_title")))
 	b.WriteString("\n\n")
 
 	ver := appVersion
@@ -1985,7 +1927,7 @@ func (m Model) viewUpdate() string {
 
 func (m Model) viewBranch() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "branch_title")))
+	b.WriteString(m.pageHeader(t(m.lang, "branch_title")))
 	b.WriteString("\n\n")
 
 	b.WriteString(t(m.lang, "branch_current") + successStyle.Render(m.currentBranch) + "\n\n")
@@ -2019,7 +1961,7 @@ func (m Model) viewBranch() string {
 
 func (m Model) viewUninstall() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "uninstall_title")))
+	b.WriteString(m.pageHeader(t(m.lang, "uninstall_title")))
 	b.WriteString("\n\n")
 
 	if m.uninstallStatus != "" {
@@ -2041,7 +1983,7 @@ func (m Model) viewUninstall() string {
 
 func (m Model) viewReport() string {
 	var b strings.Builder
-	b.WriteString(subtitleStyle.Render(t(m.lang, "report_title")))
+	b.WriteString(m.pageHeader(t(m.lang, "report_title")))
 	b.WriteString("\n\n")
 
 	if m.reportSubmitted {

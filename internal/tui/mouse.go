@@ -85,17 +85,36 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 	lines := strings.Split(ansi.Strip(m.View()), "\n")
+	if m.screen != screenMain {
+		for _, yy := range []int{y, y - 1, y + 1} {
+			if yy >= 0 && yy < len(lines) && clickIsClose(lines[yy], x) {
+				return m.handleKey(keyMsg("esc"))
+			}
+		}
+	}
 	content, y := hitContent(lines, x, y)
 	if content == "" {
 		return m, nil
 	}
 
 	switch m.screen {
+	case screenMain:
+		k := leadingKey(content)
+		switch k {
+		case "2", "3", "4", "5", "6", "7", "8", "q":
+			return m.openMenu(k)
+		}
+		if m.setupDone {
+			return m.clickCalc(lines, y, content)
+		}
+		if k != "" {
+			return m.openMenu(k)
+		}
 	case screenHelp:
 		if k := leadingKey(content); k != "" {
 			switch k {
 			case "1", "2", "3", "4", "5", "6", "7", "8", "q":
-				return m.updateMain(keyMsg(k))
+				return m.openMenu(k)
 			}
 		}
 		if k := leadingKey(content); k != "" {
@@ -127,7 +146,7 @@ func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) clickCalc(lines []string, y int, content string) (tea.Model, tea.Cmd) {
-	if k := leadingKey(content); k == "f2" {
+	if k := leadingKey(content); k == "f2" || strings.Contains(content, "F2") || strings.Contains(content, "f2") {
 		return m.handleKey(keyMsg("f2"))
 	}
 	if m.showSuggest {
@@ -149,7 +168,7 @@ func (m Model) clickCalc(lines []string, y int, content string) (tea.Model, tea.
 		m.suggestFetching = false
 		m.suggestPending = false
 		m.suggestGen++
-		return m.focusInputAt(idx)
+		return m.focusCalcAt(idx)
 	}
 	return m, nil
 }
@@ -331,7 +350,7 @@ func leadingKey(content string) string {
 		tok = content[:i]
 	}
 	switch tok {
-	case "1", "2", "3", "4", "5", "6", "7", "8", "q", "y", "n", "Y", "N", "U", "u", "R", "r", "I", "i", "G", "g", "L", "l", "A", "a":
+	case "1", "2", "3", "4", "5", "6", "7", "8", "q", "y", "n", "Y", "N", "U", "u", "R", "r", "I", "i", "G", "g", "L", "l", "A", "a", "X", "x":
 		return strings.ToLower(tok)
 	}
 	return ""

@@ -17,6 +17,8 @@ var translations = map[string]map[string]string{
 		"main_report":    " Report Issue",
 		"main_quit":      " Quit",
 		"main_select":    "Select an option",
+		"main_more":      "Menu",
+		"calc_help_home": "Tab: next field | F2: route | Enter: calculate | Esc: menu keys",
 
 		// Setup
 		"setup_title":       "Initial Setup",
@@ -208,6 +210,8 @@ var translations = map[string]map[string]string{
 		"main_report":    " Probleem Melden",
 		"main_quit":      " Afsluiten",
 		"main_select":    "Kies een optie",
+		"main_more":      "Menu",
+		"calc_help_home": "Tab: volgend veld | F2: route | Enter: berekenen | Esc: menutoetsen",
 
 		// Setup
 		"setup_title":       "Installatie",

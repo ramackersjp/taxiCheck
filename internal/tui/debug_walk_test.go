@@ -20,6 +20,7 @@ func sizedModel(lang string) Model {
 		width:     80,
 		height:    40,
 	}
+	m.ensureCalcInputs()
 	return m
 }
 
@@ -60,7 +61,6 @@ func TestWalkAllScreensDoNotPanic(t *testing.T) {
 		key  string
 		want string
 	}{
-		{"1", "Prijs Berekenen"},
 		{"esc", "Hoofdmenu"},
 		{"2", "Instellingen"},
 		{"esc", "Hoofdmenu"},
@@ -119,6 +119,7 @@ func TestSettingsPricingStartsAtFirstField(t *testing.T) {
 	m.focusIdx = 2 // leftover from the calc passenger field
 	m.inputs = make([]textinput.Model, 3)
 	var tm tea.Model = m
+	tm = press(tm, "esc")   // blur fare fields so menu keys work
 	tm = press(tm, "2")     // settings
 	tm = press(tm, "enter") // language -> git/github tools
 	tm = press(tm, "enter") // tools -> pricing
@@ -140,7 +141,6 @@ func TestSettingsPricingStartsAtFirstField(t *testing.T) {
 func TestCalcValidationAndF2(t *testing.T) {
 	m := sizedModel("en")
 	var tm tea.Model = m
-	tm = press(tm, "1")
 	tm = press(tm, "enter")
 	mm := tm.(Model)
 	if mm.err == "" {
@@ -182,6 +182,7 @@ func TestLogoPutsVersionBesideTitle(t *testing.T) {
 func TestUninstallTwoStepStaysOnScreenUntilConfirm(t *testing.T) {
 	m := sizedModel("en")
 	var tm tea.Model = m
+	tm = press(tm, "esc")
 	tm = press(tm, "7")
 	tm = press(tm, "y")
 	mm := tm.(Model)

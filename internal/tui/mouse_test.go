@@ -43,9 +43,18 @@ func findText(m Model, substr string) (x, y int) {
 
 func TestMouseClickMainMenuOpensCalc(t *testing.T) {
 	m := sized("en")
-	updated, _ := click(m, "Calculate Fare")
-	if updated.(Model).screen != screenCalc {
-		t.Fatalf("screen=%d, want calc; view:\n%s", updated.(Model).screen, ansi.Strip(m.View()))
+	if m.screen != screenMain {
+		t.Fatal("home should be the fare form")
+	}
+	if !strings.Contains(ansi.Strip(m.View()), "Start address") {
+		t.Fatalf("home missing start field:\n%s", ansi.Strip(m.View()))
+	}
+	updated, _ := click(m, "Start address")
+	if updated.(Model).screen != screenMain {
+		t.Fatalf("screen=%d, want main", updated.(Model).screen)
+	}
+	if !updated.(Model).calcFocused() {
+		t.Fatal("start field should be focused")
 	}
 }
 
@@ -59,7 +68,7 @@ func TestMouseClickMainMenuQuit(t *testing.T) {
 
 func TestMouseRightClickGoesBack(t *testing.T) {
 	m := sized("en")
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("3")})
+	updated, _ := click(m, "Help")
 	if updated.(Model).screen != screenHelp {
 		t.Fatalf("setup: screen=%d", updated.(Model).screen)
 	}
@@ -88,12 +97,10 @@ func TestMouseClickUninstallYes(t *testing.T) {
 
 func TestMouseClickCalcF2(t *testing.T) {
 	m := sized("en")
-	updated, _ := click(m, "Calculate Fare")
-	mm := updated.(Model)
-	if mm.routeMode != "fastest" {
-		t.Fatalf("routeMode=%q", mm.routeMode)
+	if m.routeMode != "fastest" {
+		t.Fatalf("routeMode=%q", m.routeMode)
 	}
-	updated, _ = click(mm, "F2")
+	updated, _ := click(m, "F2")
 	if updated.(Model).routeMode != "shortest" {
 		t.Fatalf("F2 click: routeMode=%q", updated.(Model).routeMode)
 	}
@@ -121,15 +128,15 @@ func TestMouseClickSuggestionPicksAddress(t *testing.T) {
 	in := textinput.New()
 	in.Focus()
 	m := sized("en")
-	m.screen = screenCalc
-	m.inputs = []textinput.Model{in, textinput.New(), textinput.New()}
-	m.focusIdx = 0
+	m.screen = screenMain
+	m.calcInputs = []textinput.Model{in, textinput.New(), textinput.New()}
+	m.calcFocus = 0
 	m.showSuggest = true
 	m.suggestions = []routing.AddressSuggestion{{Display: "Dam, Amsterdam"}}
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
 	m = updated.(Model)
 	updated, _ = click(m, "Dam, Amsterdam")
-	if got := updated.(Model).inputs[0].Value(); got != "Dam, Amsterdam" {
+	if got := updated.(Model).calcInputs[0].Value(); got != "Dam, Amsterdam" {
 		t.Fatalf("value=%q", got)
 	}
 }
@@ -149,21 +156,21 @@ func TestMouseIgnoresMotion(t *testing.T) {
 
 func TestMouseReleaseOpensCalc(t *testing.T) {
 	m := sized("en")
-	x, y := findText(m, "Calculate Fare")
+	x, y := findText(m, "Start address")
 	updated, _ := m.Update(tea.MouseMsg{
 		X:      x,
 		Y:      y,
 		Action: tea.MouseActionRelease,
 		Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenCalc {
-		t.Fatalf("release click screen=%d, want calc", updated.(Model).screen)
+	if !updated.(Model).calcFocused() {
+		t.Fatal("release click should focus the start field")
 	}
 }
 
 func TestMouseClickOffByOneStillHits(t *testing.T) {
 	m := sized("en")
-	x, y := findText(m, "Calculate Fare")
+	x, y := findText(m, "Start address")
 	lines := strings.Split(ansi.Strip(m.View()), "\n")
 	ty := y - 1
 	if ty < 0 || strings.TrimSpace(contentOf(lines[ty])) != "" {
@@ -178,39 +185,57 @@ func TestMouseClickOffByOneStillHits(t *testing.T) {
 		Action: tea.MouseActionPress,
 		Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenCalc {
-		t.Fatalf("blank-line click at Y=%d (item %d) screen=%d, want calc", ty, y, updated.(Model).screen)
+	if !updated.(Model).calcFocused() && updated.(Model).screen != screenMain {
+		t.Fatalf("blank-line click at Y=%d (item %d) screen=%d", ty, y, updated.(Model).screen)
 	}
 }
 
 func TestMouseClickRowMarginHitsKey(t *testing.T) {
 	m := sized("en")
-	_, y := findText(m, "Calculate Fare")
+	_, y := findText(m, "Settings")
 	updated, _ := m.Update(tea.MouseMsg{
 		X:      0,
 		Y:      y,
 		Action: tea.MouseActionPress,
 		Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenCalc {
-		t.Fatalf("margin click screen=%d, want calc", updated.(Model).screen)
+	if updated.(Model).screen != screenSettings {
+		t.Fatalf("margin click screen=%d, want settings", updated.(Model).screen)
 	}
 }
 
 func TestMousePressThenReleaseDoesNotDouble(t *testing.T) {
 	m := sized("en")
-	x, y := findText(m, "Calculate Fare")
+	x, y := findText(m, "Settings")
 	updated, _ := m.Update(tea.MouseMsg{
 		X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenCalc {
-		t.Fatal("press should open calc")
+	if updated.(Model).screen != screenSettings {
+		t.Fatal("press should open settings")
 	}
 	updated, _ = updated.Update(tea.MouseMsg{
 		X: x, Y: y, Action: tea.MouseActionRelease, Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenCalc {
-		t.Fatalf("release after press should not leave calc, screen=%d", updated.(Model).screen)
+	if updated.(Model).screen != screenSettings {
+		t.Fatalf("release after press should not leave settings, screen=%d", updated.(Model).screen)
+	}
+}
+
+func TestCloseXReturnsToMain(t *testing.T) {
+	m := sized("en")
+	updated, _ := click(m, "Settings")
+	if updated.(Model).screen != screenSettings {
+		t.Fatal("need settings")
+	}
+	x, y := findText(updated.(Model), "X")
+	if y < 0 {
+		t.Fatalf("missing close X:\n%s", ansi.Strip(updated.(Model).View()))
+	}
+	updated, _ = updated.Update(tea.MouseMsg{
+		X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
+	})
+	if updated.(Model).screen != screenMain {
+		t.Fatalf("X should return home, screen=%d", updated.(Model).screen)
 	}
 }
 
