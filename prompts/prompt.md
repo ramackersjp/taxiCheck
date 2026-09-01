@@ -39,7 +39,7 @@ taxiprijs/
 │       ├── update.go              # In-app git pull, rebuild, and binary install
 │       ├── style.go               # Lip Gloss styling
 │       ├── lang.go                # EN/NL translations
-│       └── logo.go                # ASCII taxi logo (Unicode block art)
+│       └── logo.go                # Front-facing taxi logo + date/time/license column
 ├── prompts/
 │   ├── prompt.md                   # This file (project knowledge)
 │   ├── push_prompt.md              # Git workflow: branch/commit/push to dev
@@ -69,7 +69,7 @@ taxiprijs/
 4. Minimal dependencies
 5. OpenStreetMap for free, open-source route calculation
 6. API configuration via .env file
-7. Unicode block art logo (centered above content border)
+7. Unicode block art logo (front-facing taxi) with an info column (date, time, source, license) beside it
 8. Two-step uninstall confirmation for safety
 
 ## Configuration Model
@@ -100,9 +100,9 @@ taxiprijs/
     (~/.taxiprijs/logs/) and optionally filed on GitHub via gh CLI
 
 ## Logo
-- Unicode block art taxi rendered centered above the content border
+- Unicode block art taxi (front view, hood toward the viewer, yellow TAXI roof sign) in a rounded box of fixed size
+- A matching info column sits beside the logo: date, time, source repo, MIT license (J.P. Ramackers). Same height as the logo; together they span the content panel width
 - Yellow-themed, consistent with the app's visual style
-- Uses `GetLogoCentered(width)` for proper centering
 - Version detected from git branch at startup (dev or any stable vX.Y.Z branch)
 
 ## Uninstall Safety
@@ -189,7 +189,7 @@ taxiprijs/
 - Settings screen for rate modification
 - Initial setup wizard (language + pricing)
 - Help/Manual screen
-- Yellow taxi-inspired UI with Unicode block art logo
+- Yellow taxi-inspired UI with front-facing Unicode taxi logo and an info column (date, time, source, license)
 - Keyboard-only navigation
 - English and Dutch language support
 - Fastest/shortest route mode toggle (press F2 on calc screen)

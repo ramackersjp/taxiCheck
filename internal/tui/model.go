@@ -281,6 +281,7 @@ type Model struct {
 	lastMouseX      int
 	lastMouseY      int
 	lastMousePress  bool
+	clock           time.Time
 }
 
 func NewModel() Model {
@@ -324,9 +325,9 @@ func (m Model) Init() tea.Cmd {
 	// Re-enable after alt-screen: Linux terminals (kitty/foot/alacritty)
 	// reset DEC mouse modes when entering the alt buffer or on first resize.
 	if m.setupDone {
-		return tea.Batch(tea.EnableMouseCellMotion, textinput.Blink)
+		return tea.Batch(tea.EnableMouseCellMotion, textinput.Blink, tickClock())
 	}
-	return tea.EnableMouseCellMotion
+	return tea.Batch(tea.EnableMouseCellMotion, tickClock())
 }
 
 func (m Model) inputWidth() int {
@@ -382,6 +383,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, tea.EnableMouseCellMotion
+	case clockMsg:
+		m.clock = time.Time(msg)
+		return m, tickClock()
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	case tea.MouseMsg:
@@ -1715,7 +1719,7 @@ func (m Model) View() string {
 
 	var full strings.Builder
 	full.WriteString("\n")
-	full.WriteString(GetLogoCentered(m.width))
+	full.WriteString(m.viewHeader())
 	full.WriteString("\n\n")
 	full.WriteString(content)
 
