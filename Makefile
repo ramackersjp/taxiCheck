@@ -1,5 +1,5 @@
 APP_NAME := taxiprijs
-VERSION  := 2.0.0
+VERSION  := 2.0.1
 GOFLAGS  := -trimpath
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 INSTALLER_NAME := install-taxicheck-v$(VERSION)-windows.exe

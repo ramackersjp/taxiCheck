@@ -1,0 +1,33 @@
+name: Docker image
+
+# Builds and publishes the TaxiCheck Docker image to GitHub Container
+# Registry on release. The image gets a version tag matching the release
+# (e.g. 2.0.1) plus `latest`.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        run: |
+          VER="${{ github.event.release.tag_name }}"
+          NUM="${VER#V}"
+          IMG="ghcr.io/${{ github.repository }}"
+          docker build -t "$IMG:$NUM" .
+          docker push "$IMG:$NUM"
+          docker tag "$IMG:$NUM" "$IMG:latest"
+          docker push "$IMG:latest"
