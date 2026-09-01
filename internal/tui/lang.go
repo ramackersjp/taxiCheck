@@ -27,7 +27,7 @@ var translations = map[string]map[string]string{
 		"info_source_val":  "github.com/ramackersjp/taxiCheck",
 		"info_license":     "License",
 		"info_license_val": "MIT",
-		"info_copyright":   "© 2024 J.P. Ramackers",
+		"info_copyright":   "© 2026 J.P. Ramackers",
 
 		// Setup
 		"setup_title":       "Initial Setup",
@@ -233,7 +233,7 @@ var translations = map[string]map[string]string{
 		"info_source_val":  "github.com/ramackersjp/taxiCheck",
 		"info_license":     "Licentie",
 		"info_license_val": "MIT",
-		"info_copyright":   "© 2024 J.P. Ramackers",
+		"info_copyright":   "© 2026 J.P. Ramackers",
 
 		// Setup
 		"setup_title":       "Installatie",
