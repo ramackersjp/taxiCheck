@@ -12,6 +12,7 @@ func uninstallAppImpl() error {
 	home, _ := osUserHome()
 	if home != "" {
 		_ = os.Remove(filepath.Join(home, ".local", "bin", "taxiprijs"))
+		_ = os.Remove(filepath.Join(home, ".local", "share", "applications", "taxiprijs.desktop"))
 		_ = os.RemoveAll(filepath.Join(home, ".taxiprijs"))
 		_ = os.RemoveAll(filepath.Join(home, ".config", "omarchy", "plugins", "jp.taxiprijs"))
 		removeOmarchyBarEntry(home)

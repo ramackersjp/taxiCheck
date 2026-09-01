@@ -70,7 +70,7 @@ go build -o taxiprijs ./cmd/taxiprijs
 ./taxiprijs
 ```
 
-Or install system-wide with `make install`, which installs the binary (`/usr/local/bin/taxiprijs`), the desktop entry, and the Omarchy bar widget (asks for `sudo` for the system files):
+Or install system-wide with `make install`, which installs the binary (`/usr/local/bin/taxiprijs`, or `~/.local/bin` without sudo), a desktop entry for your user (always placed, no sudo needed), and the Omarchy bar widget. System-wide files are installed if passwordless `sudo` is available:
 
 ```bash
 make install
@@ -491,6 +491,7 @@ sudo rm -f /usr/local/bin/taxiprijs
 rm -f ~/.local/bin/taxiprijs
 
 # Remove desktop entry (if installed by 'make install')
+rm -f ~/.local/share/applications/taxiprijs.desktop
 sudo rm -f /usr/share/applications/taxiprijs.desktop
 
 # Remove man page (if installed)
