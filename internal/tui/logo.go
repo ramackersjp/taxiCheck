@@ -45,7 +45,7 @@ func GetLogo() string {
 	if !strings.HasPrefix(ver, "v") {
 		ver = "v" + ver
 	}
-	b.WriteString(title + " " + lipgloss.NewStyle().Foreground(灰色).Render(ver))
+	b.WriteString(title + " " + lipgloss.NewStyle().Foreground(灰色).Faint(true).Render(ver))
 	return logoBorderStyle.Width(logoInnerWidth).Render(b.String())
 }
 
@@ -90,10 +90,10 @@ func (m Model) viewInfoPanel(totalW, totalH int) string {
 	t0 := m.clockTime()
 	val := lipgloss.NewStyle().Foreground(白色)
 	lines := []string{
-		fieldLabelOn.Render(t(m.lang, "info_date")) + "  " + val.Render(m.formatDate(t0)),
-		fieldLabelOn.Render(t(m.lang, "info_time")) + "  " + val.Render(t0.Format("15:04:05")),
-		fieldLabelOn.Render(t(m.lang, "info_source")) + "  " + helpStyle.Render(t(m.lang, "info_source_val")),
-		fieldLabelOn.Render(t(m.lang, "info_license")) + "  " + helpStyle.Render(t(m.lang, "info_license_val")),
+		fieldLabelOn.Render(t(m.lang, "info_date")) + ": " + val.Render(m.formatDate(t0)),
+		fieldLabelOn.Render(t(m.lang, "info_time")) + ": " + val.Render(t0.Format("15:04:05")),
+		fieldLabelOn.Render(t(m.lang, "info_source")) + ": " + helpStyle.Render(t(m.lang, "info_source_val")),
+		fieldLabelOn.Render(t(m.lang, "info_license")) + ": " + helpStyle.Render(t(m.lang, "info_license_val")),
 		helpStyle.Render(t(m.lang, "info_copyright")),
 	}
 	for len(lines) < innerH {
