@@ -1,0 +1,13 @@
+.env
+.git/
+dist/
+parts/
+stage/
+prime/
+.snapcraft/
+cmd/install/payload/
+flatpak/build-dir/
+flatpak/repo/
+taxiprijs
+*.snap
+*.flatpak

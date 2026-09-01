@@ -17,7 +17,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Unicode block art taxi logo (front view with TAXI sign) plus date, time, source, and license beside it
 - Version display in main menu
 - Check for updates from GitHub
-- Windows installer (`install-taxicheck-v2.0.0-windows.exe`) on GitHub releases
+- Windows installer (`install-taxicheck-v2.0.1-windows.exe`) on GitHub releases
 - Settings / first-run setup can install Git and GitHub CLI and log in to GitHub
 - Pull updates directly from the TUI (the app is rebuilt and the new binary is installed automatically)
 - Switch between dev and stable branches from the TUI
@@ -26,7 +26,8 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Report an issue from the TUI (menu item 6) with a description and error output,
   saved to a local log and optionally filed on GitHub via the `gh` CLI
 - Omnibus packaging: native binaries for Linux/macOS/Windows, a Windows installer, a
-  **snap** (`taxiprijs`), and a **flatpak** (`dev.ramackers.TaxiCheck`)
+  **snap** (`taxiprijs`), a **flatpak** (`dev.ramackers.TaxiCheck`), and a **Docker image**
+  (`ghcr.io/ramackersjp/taxicheck`)
 
 ## Installation
 
@@ -35,7 +36,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 You do not need Go, Git, or a compiler. Install with the Windows installer from the GitHub release:
 
 1. Open the **[latest GitHub release](https://github.com/ramackersjp/taxiCheck/releases/latest)**.
-2. Download **[install-taxicheck-v2.0.0-windows.exe](https://github.com/ramackersjp/taxiCheck/releases/download/v2.0.0/install-taxicheck-v2.0.0-windows.exe)**.
+2. Download **[install-taxicheck-v2.0.1-windows.exe](https://github.com/ramackersjp/taxiCheck/releases/download/v2.0.1/install-taxicheck-v2.0.1-windows.exe)**.
 3. Double-click the file. If Windows SmartScreen says the app is unrecognized, click **More info** and then **Run anyway** (the installer is not code-signed).
 4. The installer copies TaxiCheck to `%LOCALAPPDATA%\TaxiCheck`, adds that folder to your user PATH, and creates a Start Menu shortcut.
 5. Start **TaxiCheck** from the Start Menu, or open a **new** terminal (Windows Terminal, PowerShell, or Command Prompt) and run:
@@ -47,12 +48,12 @@ taxiprijs
 Silent install (no prompts):
 
 ```text
-install-taxicheck-v2.0.0-windows.exe /S
+install-taxicheck-v2.0.1-windows.exe /S
 ```
 
 Uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
 
-To rebuild the installer from source: `make build-windows-installer` (writes `dist/install-taxicheck-v2.0.0-windows.exe`).
+To rebuild the installer from source: `make build-windows-installer` (writes `dist/install-taxicheck-v2.0.1-windows.exe`).
 
 ### Snap
 
@@ -67,8 +68,8 @@ Run it from a terminal (`taxiprijs`) or from the application menu. The snap uses
 To build and install the snap locally from source (requires `snapcraft`):
 
 ```bash
-make build-snap              # writes dist/taxiprijs_2.0.0_amd64.snap
-sudo snap install --dangerous dist/taxiprijs_2.0.0_amd64.snap
+make build-snap              # writes dist/taxiprijs_2.0.1_amd64.snap
+sudo snap install --dangerous dist/taxiprijs_2.0.1_amd64.snap
 ```
 
 ### Flatpak
@@ -86,8 +87,33 @@ To build the flatpak locally from source (requires `flatpak-builder` and the fre
 
 ```bash
 flatpak install flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
-make build-flatpak          # writes dist/taxiprijs-flatpak-2.0.0.flatpak
-flatpak install --user dist/taxiprijs-flatpak-2.0.0.flatpak
+make build-flatpak          # writes dist/taxiprijs-flatpak-2.0.1.flatpak
+flatpak install --user dist/taxiprijs-flatpak-2.0.1.flatpak
+```
+
+### Docker
+
+TaxiCheck is also available as a **Docker image** (`ghcr.io/ramackersjp/taxicheck`) on
+[GitHub Container Registry](https://github.com/ramackersjp/taxicheck/pkgs/container/taxicheck).
+The image exposes the TUI in a terminal. Images are tagged with the release version
+(e.g. `2.0.1`) and `latest`:
+
+```bash
+docker run -it --rm ghcr.io/ramackersjp/taxicheck:latest
+```
+
+To use a specific release, pull the matching image tag:
+
+```bash
+docker pull ghcr.io/ramackersjp/taxicheck:2.0.1
+docker run -it --rm ghcr.io/ramackersjp/taxicheck:2.0.1
+```
+
+To build the image locally from source (requires Docker):
+
+```bash
+docker build -t ghcr.io/ramackersjp/taxicheck .
+docker run -it --rm ghcr.io/ramackersjp/taxicheck
 ```
 
 ### From Source
@@ -97,7 +123,7 @@ For a normal install you get the **latest stable release** by explicitly checkin
 ```bash
 git clone https://github.com/ramackersjp/taxiCheck.git
 cd taxiCheck
-git checkout v2.0.0   # latest stable release
+git checkout v2.0.1   # latest stable release
 cp .env.example .env
 ```
 
@@ -207,9 +233,9 @@ On the menu page, numbering starts at 1:
 1. Open **Menu**, then press **4** (Switch Branch)
 2. Use ↑/↓ to select a branch
 3. Press **Space** to switch to the selected branch
-4. Available branches: `dev` and all stable release branches (e.g. `v2.0.0`)
+4. Available branches: `dev` and all stable release branches (e.g. `v2.0.1`)
 
-You can switch to a **stable release** (for example `v2.0.0`) and back to
+You can switch to a **stable release** (for example `v2.0.1`) and back to
 `dev` at any time. Feature branches are intentionally not listed. If a release branch
 is not yet checked out locally, the app creates it automatically from the remote.
 
@@ -270,7 +296,7 @@ remote: the issue is simply saved locally.
 | Branch | Purpose | Stability |
 |--------|---------|-----------|
 | `dev` | Development (GitHub default) | Chaotic, unstable, may break at any time |
-| `v2.0.0` | Stable release | Current stable version, recommended for installs |
+| `v2.0.1` | Stable release | Current stable version, recommended for installs |
 | `main` | Production | Only merged from stable releases |
 
 > **Note:** The GitHub default branch is `dev` for development. For a normal install, check out the latest stable branch (as shown in [From Source](#from-source)) so you run a stable release. Use `dev` only if you want the latest in-development features.
@@ -383,6 +409,10 @@ cp taxiprijs.1 /usr/local/share/man/man1/
 man taxiprijs
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the release history. V2.0.1 is the current stable release.
+
 ## Development
 
 ### Project Structure
@@ -428,7 +458,9 @@ taxiprijs/
 │   ├── dev.ramackers.TaxiCheck.desktop     # Flatpak desktop entry
 │   └── dev.ramackers.TaxiCheck.appdata.xml # Flatpak/AppStream metadata
 ├── .github/workflows/
-│   └── packages.yml             # CI builds snap + flatpak on PRs to dev/releases
+│   ├── packages.yml             # CI builds snap + flatpak on PRs to dev/releases
+│   ├── release.yml              # Releases Windows installer + snap + flatpak artifacts
+│   └── docker.yml               # Builds + publishes the Docker image to GHCR on release
 ├── prompts/
 │   ├── prompt.md                # Project knowledge
 │   ├── push_prompt.md           # Git workflow (branch/commit/push)
@@ -436,6 +468,8 @@ taxiprijs/
 ├── .env.example                 # API configuration template
 ├── .env                         # API configuration (git-ignored)
 ├── .gitignore
+├── .dockerignore
+├── Dockerfile                   # Multi-stage build for the Docker image
 ├── go.mod
 ├── go.sum
 ├── LICENSE

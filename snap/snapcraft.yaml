@@ -7,11 +7,11 @@
 # (see .github/workflows/packages.yml and the README).
 #
 # NOTE: keep `version` in sync with the stable release. It intentionally
-# stays 2.0.0 until the next bump.
+# stays 2.0.1 until the next bump.
 
 name: taxiprijs
 base: core24
-version: '2.0.0'
+version: '2.0.1'
 summary: Dutch taxi fare calculator TUI
 description: |
   TaxiCheck is a terminal user interface for calculating Dutch taxi fares.
