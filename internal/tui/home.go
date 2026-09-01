@@ -252,11 +252,38 @@ func (m Model) viewPassModeRow() string {
 }
 
 func (m Model) viewMenuLink() string {
-	line := keyStyle.Render("1") + "  " + arrowStyle.Render("▸") + "  " + fieldLabelOn.Render(t(m.lang, "main_more"))
+	return m.viewHomeActions()
+}
+
+func (m Model) viewHomeActions() string {
+	left := keyStyle.Render("1") + "  " + arrowStyle.Render("▸") + "  " + fieldLabelOn.Render(t(m.lang, "main_more"))
+	right := keyStyle.Render("2") + "  " + arrowStyle.Render("⌫") + "  " + fieldLabelOn.Render(t(m.lang, "main_clear"))
+	w := m.contentWidth() - 4
+	gap := w - lipgloss.Width(left) - lipgloss.Width(right)
+	if gap < 2 {
+		gap = 2
+	}
+	line := left + strings.Repeat(" ", gap) + right
 	if m.branchStatus != "" {
 		return line + "\n\n" + successStyle.Render(m.branchStatus)
 	}
 	return line
+}
+
+func (m Model) clearCalcFields() (tea.Model, tea.Cmd) {
+	m.ensureCalcInputs()
+	for i := range m.calcInputs {
+		m.calcInputs[i].SetValue("")
+	}
+	m.showSuggest = false
+	m.suggestions = nil
+	m.suggestFetching = false
+	m.suggestPending = false
+	m.suggestGen++
+	m.err = ""
+	m.result = nil
+	m.routeInfo = nil
+	return m.focusCalcAt(0)
 }
 
 func (m Model) menuItemIDs() []string {

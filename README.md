@@ -133,7 +133,7 @@ On first launch, the application will perform initial setup:
 
 ### Main Menu
 
-After setup, the home screen is the fare form (start, destination, passengers, with live address suggestions). Under the form is **`1 ▸ Menu`**: click it or press **1** (Esc first if a field is focused) to open the menu. Subpages have a yellow **X** at the top right of the content panel to return home.
+After setup, the home screen is the fare form (start, destination, passengers, with live address suggestions). Under the form: **`1 ▸ Menu`** (left) opens the menu, and **`2 ⌫ Clear`** (right) empties the fields. Click them, or press **1** / **2** (Esc first if a field is focused). Addresses stay filled after a fare so you can recalculate fastest vs shortest; clear only when you choose. Subpages have a yellow **X** at the top right of the content panel to return home.
 
 On the menu page, numbering starts at 1:
 
@@ -155,6 +155,7 @@ On the menu page, numbering starts at 1:
 4. Press F2 to toggle between fastest and shortest route mode
 5. Press Enter - the app calculates the route and fare automatically
 6. View the route details (distance, duration) and fare breakdown
+7. Back on home the addresses stay filled so you can press F2 and calculate again. Press **2** or click **⌫ Clear** to empty the fields.
 
 ### Checking for Updates
 
@@ -214,6 +215,7 @@ remote: the issue is simply saved locally.
 | Key | Action |
 |-----|--------|
 | 1 | Open Menu from home (Esc first if a fare field is focused) |
+| 2 | Clear fare fields on home (Esc first if a field is focused) |
 | 1-6 | Select an item on the menu page |
 | Tab | Next input field |
 | Shift+Tab | Previous input field |

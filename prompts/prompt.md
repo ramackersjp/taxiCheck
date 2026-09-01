@@ -87,7 +87,7 @@ taxiprijs/
 - All addresses limited to the Netherlands
 
 ## TUI Screens
-1. Home - After setup: fare form (addresses + suggestions). A `1 ▸ Menu` link opens the menu (click or press 1 after Esc)
+1. Home - After setup: fare form (addresses + suggestions). `1 ▸ Menu` opens the menu; `2 ⌫ Clear` empties the fields (click or press after Esc). Addresses stay filled after a fare until the user clears them.
 2. Menu - Numbered from 1: Settings, Help, Check for Updates, Switch Branch, Uninstall, Report Issue, q Quit. Esc/X returns home
 3. Settings - Language, Git/GitHub CLI/GitHub login (install + manage), then pricing rates
 4. Help/Manual - Keyboard controls and documentation

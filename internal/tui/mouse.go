@@ -109,6 +109,14 @@ func (m Model) handleClick(x, y int) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+			if y >= 0 && y < len(lines) {
+				switch homeActionAt(lines[y], x, t(m.lang, "main_clear"), t(m.lang, "main_more")) {
+				case "clear":
+					return m.clearCalcFields()
+				case "menu":
+					return m.goMenu()
+				}
+			}
 			if clickIsMenuLink(content, k, t(m.lang, "main_more")) {
 				return m.goMenu()
 			}
@@ -240,6 +248,23 @@ func clickIsMenuLink(content, key, menuWord string) bool {
 		return true
 	}
 	return false
+}
+
+func homeActionAt(line string, x int, clearWord, menuWord string) string {
+	hasClear := strings.Contains(line, "⌫") || (clearWord != "" && strings.Contains(line, clearWord))
+	hasMenu := strings.Contains(line, "▸") || (menuWord != "" && strings.Contains(line, menuWord))
+	if hasClear {
+		if idx := strings.LastIndex(line, "2"); idx >= 0 {
+			col := lipgloss.Width(line[:idx])
+			if x >= col-1 {
+				return "clear"
+			}
+		}
+	}
+	if hasMenu {
+		return "menu"
+	}
+	return ""
 }
 
 func colOf(line, substr string) int {

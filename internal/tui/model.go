@@ -622,6 +622,9 @@ func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.setupDone && msg.String() == "1" {
 		return m.goMenu()
 	}
+	if m.setupDone && msg.String() == "2" {
+		return m.clearCalcFields()
+	}
 	return m.openMenu(msg.String())
 }
 
@@ -1850,6 +1853,7 @@ func (m Model) viewHelp() string {
 	b.WriteString(t(m.lang, "help_controls") + "\n")
 	b.WriteString("  " + t(m.lang, "help_home_title") + "\n")
 	b.WriteString("  " + keyStyle.Render("1") + t(m.lang, "help_menu") + "\n")
+	b.WriteString("  " + keyStyle.Render("2") + t(m.lang, "help_clear") + "\n")
 	b.WriteString("  " + t(m.lang, "help_menu_title") + "\n")
 	n := 1
 	for _, id := range m.menuItemIDs() {
