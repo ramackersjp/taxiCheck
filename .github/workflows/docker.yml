@@ -27,6 +27,7 @@ jobs:
           VER="${{ github.event.release.tag_name }}"
           NUM="${VER#V}"
           IMG="ghcr.io/${{ github.repository }}"
+          IMG="${IMG,,}"
           docker build -t "$IMG:$NUM" .
           docker push "$IMG:$NUM"
           docker tag "$IMG:$NUM" "$IMG:latest"

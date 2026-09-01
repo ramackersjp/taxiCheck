@@ -49,4 +49,6 @@ jobs:
       - name: Upload flatpak
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" taxiprijs-flatpak.flatpak --clobber
+        run: |
+          git config --global --add safe.directory "$PWD"
+          gh release upload "${{ github.event.release.tag_name }}" taxiprijs-flatpak.flatpak --repo "${{ github.repository }}" --clobber
