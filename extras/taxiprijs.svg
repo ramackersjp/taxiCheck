@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="12" fill="#1c1c1c"/>
+  <!-- cabin -->
+  <path d="M10 38 L18 26 H30 L38 38 Z" fill="#fdd835" stroke="#3a3a3a" stroke-width="1.5"/>
+  <!-- body -->
+  <path d="M8 40 H56 V50 Q56 54 52 54 H12 Q8 54 8 50 Z" fill="#fdd835" stroke="#3a3a3a" stroke-width="1.5"/>
+  <!-- checkered stripe -->
+  <g fill="#1c1c1c">
+    <rect x="10" y="42" width="4" height="4"/>
+    <rect x="18" y="42" width="4" height="4"/>
+    <rect x="26" y="42" width="4" height="4"/>
+    <rect x="34" y="42" width="4" height="4"/>
+    <rect x="42" y="42" width="4" height="4"/>
+    <rect x="50" y="42" width="4" height="4"/>
+    <rect x="14" y="46" width="4" height="4"/>
+    <rect x="22" y="46" width="4" height="4"/>
+    <rect x="30" y="46" width="4" height="4"/>
+    <rect x="38" y="46" width="4" height="4"/>
+    <rect x="46" y="46" width="4" height="4"/>
+  </g>
+  <!-- windows -->
+  <path d="M13 36 L19 28 H29 L35 36 Z" fill="#9ee6ff"/>
+  <!-- taxi sign -->
+  <rect x="24" y="20" width="16" height="7" rx="2" fill="#1c1c1c"/>
+  <rect x="26" y="22" width="12" height="3.5" rx="1" fill="#fdd835"/>
+  <!-- wheels -->
+  <circle cx="19" cy="54" r="4.5" fill="#111"/>
+  <circle cx="19" cy="54" r="2" fill="#fdd835"/>
+  <circle cx="45" cy="54" r="4.5" fill="#111"/>
+  <circle cx="45" cy="54" r="2" fill="#fdd835"/>
+  <!-- head/taillight -->
+  <rect x="5" y="39" width="3" height="6" rx="1" fill="#ff5252"/>
+  <rect x="56" y="39" width="3" height="6" rx="1" fill="#fff176"/>
+</svg>

@@ -1,0 +1,75 @@
+# Snap packaging for TaxiCheck.
+#
+# Build locally:   snapcraft --destructive-mode
+# Install locally: snap install --dangerous *.snap
+#
+# Publishing to the Snap Store needs credentials and is done separately
+# (see .github/workflows/packages.yml and the README).
+#
+# NOTE: keep `version` in sync with the stable release. It intentionally
+# stays 2.0.0 until the next bump.
+
+name: taxiprijs
+base: core24
+version: '2.0.0'
+summary: Dutch taxi fare calculator TUI
+description: |
+  TaxiCheck is a terminal user interface for calculating Dutch taxi fares.
+
+  It calculates real-time routes via OpenStreetMap (OSRM), offers live Dutch
+  address suggestions via PDOK Locatieserver, and supports configurable pricing
+  for two passenger groups (taxi auto 1-4 and taxi bus 5-8).
+
+  Features:
+   - Real-time route and fare calculation within the Netherlands
+   - Live address suggestions while typing
+   - Fastest or shortest route mode
+   - English and Dutch language support
+   - Configuration via ~/.taxiprijs/config.toml or the in-app settings
+
+  Launch TaxiCheck from the application menu, or run `taxiprijs` in a terminal.
+icon: snap/gui/icon.png
+grade: stable
+confinement: strict
+
+apps:
+  taxiprijs:
+    command: bin/taxiprijs
+    plugs:
+      - network   # OSRM routing, PDOK and Nominatim geocoding
+      - home      # read/write ~/.taxiprijs configuration
+
+parts:
+  go-toolchain:
+    # Official Go toolchain (Ubuntu 24.04's go is older than go.mod requires).
+    # The toolchain is staged for the app part but kept out of the final snap.
+    # NOTE: snapcraft's tar pull strips the leading 'go/' directory, so the
+    # toolchain lands at usr/local/bin (GOROOT auto-resolves to usr/local).
+    plugin: nil
+    source: https://go.dev/dl/go1.27.0.linux-amd64.tar.gz
+    source-type: tar
+    override-build: |
+      mkdir -p "$SNAPCRAFT_PART_INSTALL/usr/local"
+      cp -a "$SNAPCRAFT_PART_SRC/." "$SNAPCRAFT_PART_INSTALL/usr/local/"
+    prime:
+      - -usr
+  taxiprijs:
+    after: [go-toolchain]
+    plugin: nil
+    source: .
+    source-type: local
+    override-build: |
+      export PATH="$SNAPCRAFT_STAGE/usr/local/bin:$PATH"
+      export GOFLAGS="-trimpath" CGO_ENABLED=0 GOTOOLCHAIN=local
+      go build -ldflags "-s -w" \
+        -o "$SNAPCRAFT_PART_INSTALL/bin/taxiprijs" ./cmd/taxiprijs
+  icon:
+    # App icon for the desktop entry and the hicolor icon theme.
+    plugin: nil
+    source: extras
+    source-type: local
+    override-build: |
+      install -Dm644 "$SNAPCRAFT_PART_SRC/taxiprijs.svg" \
+        "$SNAPCRAFT_PART_INSTALL/usr/share/icons/hicolor/scalable/apps/taxiprijs.svg"
+    prime:
+      - usr/share/icons/hicolor/scalable/apps/taxiprijs.svg

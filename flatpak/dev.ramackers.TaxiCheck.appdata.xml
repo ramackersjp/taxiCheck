@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <id>dev.ramackers.TaxiCheck</id>
+  <name>TaxiCheck</name>
+  <summary>Dutch taxi fare calculator TUI</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <developer_name>J.P. Ramackers</developer_name>
+  <description>
+    <p>TaxiCheck is a terminal user interface for calculating Dutch taxi fares.</p>
+    <p>It calculates real-time routes via OpenStreetMap (OSRM), offers live Dutch address suggestions via PDOK Locatieserver, and supports configurable pricing for two passenger groups (taxi auto 1-4 and taxi bus 5-8).</p>
+  </description>
+  <url type="homepage">https://github.com/ramackersjp/taxiCheck</url>
+  <url type="bugtracker">https://github.com/ramackersjp/taxiCheck/issues</url>
+  <releases>
+    <release version="2.0.0" date="2026-09-01"/>
+  </releases>
+  <launchable type="desktop-id">dev.ramackers.TaxiCheck.desktop</launchable>
+</component>

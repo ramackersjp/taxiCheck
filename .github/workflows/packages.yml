@@ -1,0 +1,45 @@
+name: Snap and Flatpak packages
+
+# Builds the snap and flatpak on every PR/merge to dev and on release tags.
+# The flatpak job needs --privileged to allow bubblewrap inside the container.
+# Container images from https://github.com/flathub-infra/actions-images.
+# Publishing to the Snap Store / Flathub is done separately, after the store
+# credentials are configured (see the README section "Snap" / "Flatpak").
+on:
+  push:
+    branches: [dev]
+    tags: ['v*']
+  pull_request:
+    branches: [dev]
+
+jobs:
+  snap:
+    name: Build snap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snapcore/action-build@v1
+        id: snapcraft
+        with:
+          path: .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taxiprijs-snap
+          path: ${{ steps.snapcraft.outputs.snap }}
+
+  flatpak:
+    name: Build flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: dist/taxiprijs-flatpak.flatpak
+          manifest-path: flatpak/dev.ramackers.TaxiCheck.yaml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taxiprijs-flatpak
+          path: dist/taxiprijs-flatpak.flatpak

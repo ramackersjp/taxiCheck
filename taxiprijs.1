@@ -18,6 +18,46 @@ to empty the fare fields. Addresses stay filled after a calculation until cleare
 .SH OPTIONS
 .B taxiprijs
 does not take any command line options.
+.SH INSTALLATION
+TaxiCheck can be installed as a snap or flatpak, or from source.
+.TP
+.B Snap
+.B sudo snap install taxiprijs
+.br
+Run it with
+.B taxiprijs
+or from the application menu. The snap is strictly confined with
+.B network
+and
+.B home
+plugs so it can reach the routing/geocoding APIs and read/write
+.B ~/.taxiprijs
+.
+To install a locally built snap:
+.B sudo snap install --dangerous taxiprijs_2.0.0_amd64.snap
+.TP
+.B Flatpak
+.B flatpak install flathub dev.ramackers.TaxiCheck
+.br
+Run it with
+.B flatpak run dev.ramackers.TaxiCheck
+. The flatpak is granted
+.B --share=network
+and
+.B --filesystem=~/.taxiprijs:create
+. To install a locally built bundle:
+.B flatpak install --user taxiprijs-flatpak-2.0.0.flatpak
+.TP
+.B From source
+.B git clone https://github.com/ramackersjp/taxiCheck.git && cd taxiCheck && git checkout v2.0.0
+.br
+Then
+.B make install
+or build with
+.B go build -o taxiprijs ./cmd/taxiprijs
+and run
+.B ./taxiprijs
+.
 .SH KEYBOARD CONTROLS
 .TP
 .B 1
@@ -75,7 +115,7 @@ Stable release branches (e.g. v2.0.0) are listed and can be
 switched to from the TUI; local changes are stashed before the switch and
 restored afterwards.
 .SH REPORTING ISSUES
-Option 8 in the main menu starts a report.
+Option 6 in the main menu starts a report.
 .PP
 Enter a problem description and, if available, the error output. The report is
 always saved to
@@ -85,7 +125,7 @@ and, when the
 CLI is installed and the repository has a GitHub remote, filed as a GitHub
 issue whose number is shown after submission.
 .SH UNINSTALLING
-Option 7 in the main menu starts the uninstall process.
+Option 5 in the main menu starts the uninstall process.
 .PP
 The uninstall requires two confirmations for safety:
 .IP 1. 3
