@@ -293,6 +293,43 @@ func TestHomeMenuLinkAndMenuNumbers(t *testing.T) {
 	}
 }
 
+func TestHomeClearKeepsAddressesUntilAsked(t *testing.T) {
+	m := sized("en")
+	m.calcInputs[0].SetValue("Dam, Amsterdam")
+	m.calcInputs[1].SetValue("Rotterdam CS")
+	m.calcInputs[2].SetValue("3")
+	m.screen = screenResult
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	mm := updated.(Model)
+	if mm.screen != screenMain {
+		t.Fatalf("screen=%d, want home", mm.screen)
+	}
+	if mm.calcInputs[0].Value() != "Dam, Amsterdam" || mm.calcInputs[1].Value() != "Rotterdam CS" || mm.calcInputs[2].Value() != "3" {
+		t.Fatalf("addresses must stay after a fare: %q / %q / %q", mm.calcInputs[0].Value(), mm.calcInputs[1].Value(), mm.calcInputs[2].Value())
+	}
+	updated, _ = mm.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
+	mm = updated.(Model)
+	if mm.calcInputs[0].Value() != "" || mm.calcInputs[1].Value() != "" || mm.calcInputs[2].Value() != "" {
+		t.Fatalf("2 should clear fields, got %q / %q / %q", mm.calcInputs[0].Value(), mm.calcInputs[1].Value(), mm.calcInputs[2].Value())
+	}
+}
+
+func TestMouseClickClearFields(t *testing.T) {
+	m := sized("en")
+	home := ansi.Strip(m.View())
+	if !strings.Contains(home, "⌫") || !strings.Contains(home, "Clear") {
+		t.Fatalf("home should show 2 ⌫ Clear:\n%s", home)
+	}
+	m.calcInputs[0].SetValue("Dam")
+	m.calcInputs[1].SetValue("Utrecht")
+	updated, _ := click(m, "Clear")
+	mm := updated.(Model)
+	if mm.calcInputs[0].Value() != "" || mm.calcInputs[1].Value() != "" {
+		t.Fatalf("click Clear should empty fields, got %q / %q", mm.calcInputs[0].Value(), mm.calcInputs[1].Value())
+	}
+}
+
 func TestMouseClickInsideStartBoxFocusesField(t *testing.T) {
 	m := sized("en")
 	_, y := findText(m, "Start address")
