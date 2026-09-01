@@ -106,14 +106,11 @@ func clickIsClose(line string, x int) bool {
 	if !strings.HasSuffix(trimmed, "X") {
 		return false
 	}
-	return x >= col-1 && x <= col+lipgloss.Width("X")+1
+	return x >= col-2 && x <= col+lipgloss.Width("X")+2
 }
 
 func (m Model) fieldCard(label, inner string, focused bool) string {
-	w := m.contentWidth() - 8
-	if w < 20 {
-		w = 20
-	}
+	w := m.cardInnerWidth()
 	dot := "○ "
 	lab := helpStyle.Render(dot + label)
 	box := fieldBoxOff.Width(w)
@@ -123,6 +120,39 @@ func (m Model) fieldCard(label, inner string, focused bool) string {
 		box = fieldBoxOn.Width(w)
 	}
 	return lab + "\n" + box.Render(inner)
+}
+
+// cardInnerWidth is the lipgloss Width() of a full-width field box. Rounded
+// borders add 2 columns on top of that; the result matches the outer frame.
+func (m Model) cardInnerWidth() int {
+	w := m.contentWidth() - 8
+	if w < 20 {
+		w = 20
+	}
+	return w
+}
+
+// rowOuterWidth is the on-screen width of a full-width field box (inner + borders).
+func (m Model) rowOuterWidth() int {
+	return m.cardInnerWidth() + 2
+}
+
+func clipLabel(s string, max int) string {
+	if max < 4 {
+		max = 4
+	}
+	if lipgloss.Width(s) <= max {
+		return s
+	}
+	runes := []rune(s)
+	w := 0
+	for i := range runes {
+		if w+1 > max-1 {
+			return string(runes[:i]) + "…"
+		}
+		w++
+	}
+	return s
 }
 
 func (m Model) viewFareCard() string {
@@ -143,36 +173,81 @@ func (m Model) viewFareCard() string {
 		b.WriteString(m.renderSuggestions())
 	}
 
-	passW := 14
-	if passW > m.contentWidth()/3 {
-		passW = 8
-	}
-	passInner := m.calcInputs[2].View()
-	passLab := t(m.lang, "calc_label_passengers")
-	passFocused := m.calcFocus == 2 && m.calcInputs[2].Focused()
-	passDot := "○ "
-	passTitle := helpStyle.Render(passDot + passLab)
-	passBox := fieldBoxOff.Width(passW)
-	if passFocused {
-		passTitle = fieldLabelOn.Render("● " + passLab)
-		passBox = fieldBoxOn.Width(passW)
-	}
-	passCard := passTitle + "\n" + passBox.Render(passInner)
-
-	mode := t(m.lang, "calc_mode_fastest")
-	if m.routeMode != "fastest" {
-		mode = t(m.lang, "calc_mode_shortest")
-	}
-	modeInner := keyStyle.Render("F2") + "  " + successStyle.Render(mode)
-	modeW := m.contentWidth() - 8 - passW - 2
-	if modeW < 16 {
-		modeW = 16
-	}
-	modeCard := fieldLabelOn.Render("● "+t(m.lang, "calc_mode")) + "\n" + fieldBoxOn.Width(modeW).Render(modeInner)
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, passCard, "  ", modeCard))
+	b.WriteString(m.viewPassModeRow())
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "calc_help_home")))
 	return b.String()
+}
+
+func (m Model) viewPassModeRow() string {
+	passInner := m.calcInputs[2].View()
+	passLab := t(m.lang, "calc_label_passengers")
+	passFocused := m.calcFocus == 2 && m.calcInputs[2].Focused()
+	modeName := t(m.lang, "calc_mode_fastest")
+	if m.routeMode != "fastest" {
+		modeName = t(m.lang, "calc_mode_shortest")
+	}
+	modeInner := keyStyle.Render("F2") + "  " + successStyle.Render(modeName)
+	modeLab := t(m.lang, "calc_mode")
+
+	passCard := func(boxW int, title string) string {
+		box := fieldBoxOff.Width(boxW)
+		lab := helpStyle.Render(title)
+		if passFocused {
+			box = fieldBoxOn.Width(boxW)
+			lab = fieldLabelOn.Render(title)
+		}
+		return lab + "\n" + box.Render(passInner)
+	}
+	modeCard := func(boxW int, title string) string {
+		return fieldLabelOn.Render(title) + "\n" + fieldBoxOn.Width(boxW).Render(modeInner)
+	}
+
+	const gap = 2
+	const minModeOuter = 22
+	rowOuter := m.rowOuterWidth()
+	passDot := "○ "
+	if passFocused {
+		passDot = "● "
+	}
+	passTitleRaw := passDot + passLab
+	modeTitleRaw := "● " + modeLab
+	passNeed := lipgloss.Width(passTitleRaw)
+	if passNeed < 16 {
+		passNeed = 16
+	}
+	if passNeed+gap+minModeOuter > rowOuter {
+		// Not enough room: stack full-width cards so nothing wraps.
+		return passCard(m.cardInnerWidth(), passTitleRaw) + "\n" + modeCard(m.cardInnerWidth(), modeTitleRaw)
+	}
+	passOuter := passNeed
+	modeOuter := rowOuter - passOuter - gap
+	passTitle := clipLabel(passTitleRaw, passOuter)
+	modeTitle := clipLabel(modeTitleRaw, modeOuter)
+	// Width() is content+padding; rounded borders add 2 columns.
+	passBoxW := passOuter - 2
+	modeBoxW := modeOuter - 2
+	if passBoxW < 8 {
+		passBoxW = 8
+	}
+	if modeBoxW < 10 {
+		modeBoxW = 10
+	}
+	passStyled := helpStyle.Render(passTitle)
+	if passFocused {
+		passStyled = fieldLabelOn.Render(passTitle)
+	}
+	// Pin the title to the column width so JoinHorizontal does not expand
+	// past the box (a longer unstyled label previously wrapped the row).
+	passCol := lipgloss.NewStyle().Width(passOuter).MaxWidth(passOuter).Render(passStyled)
+	modeCol := lipgloss.NewStyle().Width(modeOuter).MaxWidth(modeOuter).Render(fieldLabelOn.Render(modeTitle))
+	passBox := fieldBoxOff.Width(passBoxW)
+	if passFocused {
+		passBox = fieldBoxOn.Width(passBoxW)
+	}
+	left := passCol + "\n" + passBox.Render(passInner)
+	right := modeCol + "\n" + fieldBoxOn.Width(modeBoxW).Render(modeInner)
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", gap), right)
 }
 
 func (m Model) viewMainMenuKeys() string {

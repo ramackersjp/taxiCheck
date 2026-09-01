@@ -3,11 +3,13 @@ package tui
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/ramackersjp/taxiCheck/internal/wininstall"
 )
@@ -479,11 +481,56 @@ func copyRegular(src, dst string) error {
 	return os.Rename(tmpName, dst)
 }
 
-// rebuildBinary compiles into a temp file, then atomically replaces the
+// Overridable so tests can simulate a missing Go toolchain or a GitHub download.
+var (
+	compileRepoBinary = compileBinary
+	fetchPrebuilt     = fetchPrebuiltImpl
+	httpGetFile       = httpGetFileImpl
+)
+
+const devPrebuiltTag = "latest-dev"
+
+var githubDownloadBase = "https://github.com/ramackersjp/taxiCheck/releases/download"
+
+func goAvailable() bool {
+	p := goBinary()
+	if p == "" {
+		return false
+	}
+	if filepath.Base(p) != p {
+		st, err := os.Stat(p)
+		return err == nil && !st.IsDir()
+	}
+	_, err := exec.LookPath(p)
+	return err == nil
+}
+
+// rebuildBinary compiles from the checkout, then falls back to a GitHub
+// prebuilt. Windows installer users often have Git but not Go; without the
+// download they could pull `dev` and still keep running the old .exe.
+func rebuildBinary(dir string) (string, error) {
+	dest, err := compileRepoBinary(dir)
+	if err == nil {
+		return dest, nil
+	}
+	built, derr := fetchPrebuilt(dir)
+	if derr == nil {
+		return built, nil
+	}
+	if !goAvailable() {
+		return "", derr
+	}
+	return "", err
+}
+
+// compileBinary compiles into a temp file, then atomically replaces the
 // checkout binary. `go build -o taxiprijs` on a running binary fails with
 // ETXTBSY ("text file busy") — that is how the Omarchy widget launches this
 // app — so the temp+rename path is required for in-app updates.
-func rebuildBinary(dir string) (string, error) {
+func compileBinary(dir string) (string, error) {
+	if dir == "" {
+		return "", fmt.Errorf("no source repository")
+	}
 	dest := filepath.Join(dir, binName())
 	tmp, err := os.CreateTemp(dir, ".taxiprijs-build-*.tmp")
 	if err != nil {
@@ -514,6 +561,95 @@ func rebuildBinary(dir string) (string, error) {
 		return "", err
 	}
 	return dest, nil
+}
+
+func prebuiltTag(dir string) string {
+	branch := currentGitBranch(dir)
+	if stableBranch(branch) {
+		return branch
+	}
+	return devPrebuiltTag
+}
+
+func prebuiltAssetName() string {
+	arch := runtime.GOARCH
+	switch currentGOOS {
+	case "windows":
+		return "taxiprijs-windows-amd64.exe"
+	case "linux":
+		if arch == "arm64" {
+			return "taxiprijs-linux-arm64"
+		}
+		return "taxiprijs-linux-amd64"
+	case "darwin":
+		if arch == "arm64" {
+			return "taxiprijs-macos-arm64"
+		}
+		return "taxiprijs-macos-amd64"
+	default:
+		return ""
+	}
+}
+
+func fetchPrebuiltImpl(dir string) (string, error) {
+	if dir == "" {
+		return "", fmt.Errorf("no source repository")
+	}
+	name := prebuiltAssetName()
+	if name == "" {
+		return "", fmt.Errorf("no prebuilt binary for this platform")
+	}
+	tag := prebuiltTag(dir)
+	url := githubDownloadBase + "/" + tag + "/" + name
+	dest := filepath.Join(dir, binName())
+	tmp, err := os.CreateTemp(dir, ".taxiprijs-dl-*")
+	if err != nil {
+		return "", err
+	}
+	tmpName := tmp.Name()
+	if currentGOOS == "windows" {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		tmpName = strings.TrimSuffix(tmpName, filepath.Ext(tmpName)) + ".exe"
+		tmp, err = os.Create(tmpName)
+		if err != nil {
+			return "", err
+		}
+	}
+	defer os.Remove(tmpName)
+	if err := httpGetFile(url, tmp); err != nil {
+		tmp.Close()
+		return "", err
+	}
+	if err := tmp.Close(); err != nil {
+		return "", err
+	}
+	if err := os.Chmod(tmpName, 0755); err != nil {
+		return "", err
+	}
+	if err := replaceFile(tmpName, dest); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
+func httpGetFileImpl(url string, w io.Writer) error {
+	client := &http.Client{Timeout: 90 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "TaxiCheck")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("download: HTTP %d", resp.StatusCode)
+	}
+	_, err = io.Copy(w, io.LimitReader(resp.Body, 80<<20))
+	return err
 }
 
 func absClean(p string) string {

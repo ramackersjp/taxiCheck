@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -560,4 +562,112 @@ func TestPullUpdateAppliesNewBinary(t *testing.T) {
 func fileExists(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+func TestRebuildBinaryFallsBackToPrebuilt(t *testing.T) {
+	dir := t.TempDir()
+	origC, origF := compileRepoBinary, fetchPrebuilt
+	t.Cleanup(func() {
+		compileRepoBinary = origC
+		fetchPrebuilt = origF
+	})
+	compileRepoBinary = func(string) (string, error) {
+		return "", fmt.Errorf("exec: \"go\": executable file not found")
+	}
+	dest := filepath.Join(dir, binName())
+	fetchPrebuilt = func(d string) (string, error) {
+		if d != dir {
+			t.Fatalf("dir=%q want %q", d, dir)
+		}
+		if err := os.WriteFile(dest, []byte("PREBUILT"), 0755); err != nil {
+			return "", err
+		}
+		return dest, nil
+	}
+	got, err := rebuildBinary(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != dest {
+		t.Fatalf("path=%q want %q", got, dest)
+	}
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "PREBUILT" {
+		t.Fatalf("content=%q", data)
+	}
+}
+
+func TestFetchPrebuiltDownloadsAsset(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, devPrebuiltTag) {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte("FAKEEXE"))
+	}))
+	defer srv.Close()
+	orig := githubDownloadBase
+	githubDownloadBase = srv.URL
+	defer func() { githubDownloadBase = orig }()
+
+	dir := t.TempDir()
+	got, err := fetchPrebuiltImpl(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "FAKEEXE" {
+		t.Fatalf("content=%q", data)
+	}
+}
+
+func TestGitCheckUpdateEmptyRepoErrors(t *testing.T) {
+	msg := gitCheckUpdate("", "")
+	if msg.err == nil {
+		t.Fatal("empty checkout must report an error, not 'up to date'")
+	}
+	if msg.hasUpdate {
+		t.Fatal("must not claim an update")
+	}
+}
+
+func TestPickUpdateCheckUsesReleaseWithoutRepo(t *testing.T) {
+	if stableBranch("dev") {
+		t.Fatal("dev must not be treated as a GitHub release channel")
+	}
+	useRelease := func(dir, branch string) bool {
+		return dir == "" || branch == "" || stableBranch(branch)
+	}
+	if !useRelease("", "") {
+		t.Fatal("Windows installer with no git checkout must use GitHub releases")
+	}
+	if !useRelease("/repo", "v1.1.0") {
+		t.Fatal("stable branch must use GitHub releases")
+	}
+	if useRelease("/repo", "dev") {
+		t.Fatal("dev must compare against origin/dev")
+	}
+}
+
+func TestPrebuiltTagAndAsset(t *testing.T) {
+	if prebuiltTag("") != devPrebuiltTag {
+		t.Fatalf("empty branch tag=%q", prebuiltTag(""))
+	}
+	orig := currentGOOS
+	defer func() { currentGOOS = orig }()
+	currentGOOS = "windows"
+	if prebuiltAssetName() != "taxiprijs-windows-amd64.exe" {
+		t.Fatalf("windows asset=%q", prebuiltAssetName())
+	}
+	currentGOOS = "linux"
+	name := prebuiltAssetName()
+	if name != "taxiprijs-linux-amd64" && name != "taxiprijs-linux-arm64" {
+		t.Fatalf("linux asset=%q", name)
+	}
 }

@@ -246,3 +246,82 @@ func TestMouseClickSettings(t *testing.T) {
 		t.Fatalf("screen=%d view:\n%s", updated.(Model).screen, ansi.Strip(m.View()))
 	}
 }
+
+func TestMouseClickInsideStartBoxFocusesField(t *testing.T) {
+	m := sized("en")
+	_, y := findText(m, "Start address")
+	if y < 0 {
+		t.Fatal("missing start label")
+	}
+	lines := strings.Split(ansi.Strip(m.View()), "\n")
+	boxY := y + 2
+	if boxY >= len(lines) || !strings.Contains(lines[boxY], "Dam Square") {
+		boxY = y + 1
+	}
+	x := strings.Index(lines[boxY], "Dam")
+	if x < 0 {
+		x = strings.Index(lines[boxY], "│")
+		if x < 0 {
+			t.Fatalf("start box not at y=%d:\n%s", boxY, ansi.Strip(m.View()))
+		}
+		x++
+	}
+	updated, _ := m.Update(tea.MouseMsg{
+		X: x, Y: boxY, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
+	})
+	if !updated.(Model).calcFocused() || updated.(Model).calcFocus != 0 {
+		t.Fatalf("click inside start box: focus=%d focused=%v\n%s",
+			updated.(Model).calcFocus, updated.(Model).calcFocused(), ansi.Strip(m.View()))
+	}
+}
+
+func TestMouseClickPassengersDoesNotToggleF2(t *testing.T) {
+	m := sized("en")
+	if m.routeMode != "fastest" {
+		t.Fatal("expected fastest")
+	}
+	x, y := findText(m, "Number of passengers")
+	if y < 0 {
+		t.Fatal("missing passengers label")
+	}
+	updated, _ := m.Update(tea.MouseMsg{
+		X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
+	})
+	mm := updated.(Model)
+	if mm.routeMode != "fastest" {
+		t.Fatal("clicking passengers must not toggle F2")
+	}
+	if mm.calcFocus != 2 {
+		t.Fatalf("calcFocus=%d, want passengers", mm.calcFocus)
+	}
+}
+
+func TestMouseClickF2ColumnTogglesMode(t *testing.T) {
+	m := sized("en")
+	x, y := findText(m, "F2")
+	if y < 0 {
+		t.Fatal("missing F2")
+	}
+	updated, _ := m.Update(tea.MouseMsg{
+		X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
+	})
+	if updated.(Model).routeMode != "shortest" {
+		t.Fatalf("F2 column should toggle route, got %q", updated.(Model).routeMode)
+	}
+}
+
+func TestPassModeRowDoesNotWrap(t *testing.T) {
+	m := sized("en")
+	lines := strings.Split(ansi.Strip(m.View()), "\n")
+	_, y := findText(m, "Number of passengers")
+	if y < 0 || y+1 >= len(lines) {
+		t.Fatal("missing passengers row")
+	}
+	box := contentOf(lines[y+1])
+	if strings.Count(box, "╭") != 2 {
+		t.Fatalf("passenger and route boxes should sit on one row, got %q", box)
+	}
+	if strings.Contains(contentOf(lines[y+2]), "╭") {
+		t.Fatalf("route box wrapped onto the next line:\n%s", strings.Join(lines[y:y+5], "\n"))
+	}
+}
