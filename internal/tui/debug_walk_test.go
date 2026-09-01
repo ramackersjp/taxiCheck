@@ -61,19 +61,25 @@ func TestWalkAllScreensDoNotPanic(t *testing.T) {
 		key  string
 		want string
 	}{
-		{"esc", "Hoofdmenu"},
-		{"2", "Instellingen"},
-		{"esc", "Hoofdmenu"},
-		{"3", "Help"},
-		{"esc", "Hoofdmenu"},
-		{"5", "Updates"},
-		{"esc", "Hoofdmenu"},
-		{"6", "Wissel Branch"},
-		{"esc", "Hoofdmenu"},
-		{"7", "Verwijderen"},
-		{"esc", "Hoofdmenu"},
-		{"8", "Probleem Melden"},
-		{"esc", "Hoofdmenu"},
+		{"esc", "Menu"},
+		{"1", "Hoofdmenu"},
+		{"1", "Instellingen"},
+		{"esc", "Menu"},
+		{"1", "Hoofdmenu"},
+		{"2", "Help"},
+		{"esc", "Menu"},
+		{"1", "Hoofdmenu"},
+		{"3", "Updates"},
+		{"esc", "Menu"},
+		{"1", "Hoofdmenu"},
+		{"4", "Wissel Branch"},
+		{"esc", "Menu"},
+		{"1", "Hoofdmenu"},
+		{"5", "Verwijderen"},
+		{"esc", "Menu"},
+		{"1", "Hoofdmenu"},
+		{"6", "Probleem Melden"},
+		{"esc", "Menu"},
 	}
 
 	for _, s := range screens {
@@ -85,7 +91,7 @@ func TestWalkAllScreensDoNotPanic(t *testing.T) {
 		if !strings.Contains(out, s.want) {
 			t.Fatalf("after %q, view missing %q\n%s", s.key, s.want, out)
 		}
-		if s.key == "3" {
+		if s.want == "Help" {
 			if !strings.Contains(out, "druk U om te pullen") || !strings.Contains(out, "F3") {
 				t.Fatalf("help must explain pull then F3, got:\n%s", out)
 			}
@@ -120,7 +126,8 @@ func TestSettingsPricingStartsAtFirstField(t *testing.T) {
 	m.inputs = make([]textinput.Model, 3)
 	var tm tea.Model = m
 	tm = press(tm, "esc")   // blur fare fields so menu keys work
-	tm = press(tm, "2")     // settings
+	tm = press(tm, "1")     // menu
+	tm = press(tm, "1")     // settings
 	tm = press(tm, "enter") // language -> git/github tools
 	tm = press(tm, "enter") // tools -> pricing
 	mm := tm.(Model)
@@ -183,7 +190,8 @@ func TestUninstallTwoStepStaysOnScreenUntilConfirm(t *testing.T) {
 	m := sizedModel("en")
 	var tm tea.Model = m
 	tm = press(tm, "esc")
-	tm = press(tm, "7")
+	tm = press(tm, "1")
+	tm = press(tm, "5")
 	tm = press(tm, "y")
 	mm := tm.(Model)
 	if mm.uninstallStep != 1 {
@@ -228,7 +236,9 @@ func TestReportEmptySubmitIsRejected(t *testing.T) {
 	m := sizedModel("en")
 	var tm tea.Model = m
 	tm, _ = tm.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
-	tm = press(tm, "8")
+	tm = press(tm, "esc")
+	tm = press(tm, "1")
+	tm = press(tm, "6")
 	tm = press(tm, "enter")
 	mm := tm.(Model)
 	if mm.err == "" {

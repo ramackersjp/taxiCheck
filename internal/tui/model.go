@@ -37,6 +37,7 @@ const (
 	screenBranch
 	screenUninstall
 	screenReport
+	screenMenu
 )
 
 var appVersion = "dev"
@@ -599,41 +600,91 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateUninstall(msg)
 	case screenReport:
 		return m.updateReport(msg)
+	case screenMenu:
+		return m.updateMenu(msg)
 	}
 	return m, nil
 }
 
 func (m Model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.branchStatus = ""
-	if m.screen == screenMain && m.setupDone && m.calcFocused() {
+	if m.setupDone && m.calcFocused() {
 		return m.updateCalc(msg)
 	}
-	if m.setupDone && (msg.String() == "1" || msg.String() == "tab") {
+	if m.setupDone && msg.String() == "tab" {
 		m.ensureCalcInputs()
 		return m.focusCalcAt(0)
+	}
+	if m.setupDone && msg.String() == "1" {
+		return m.goMenu()
 	}
 	return m.openMenu(msg.String())
 }
 
-func (m Model) openMenu(key string) (tea.Model, tea.Cmd) {
-	switch key {
+func (m Model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
 	case "q":
 		return m, tea.Quit
-	case "1":
-		m.ensureCalcInputs()
+	case "esc":
 		m.screen = screenMain
+		m.err = ""
+		m.ensureCalcInputs()
 		return m.focusCalcAt(0)
-	case "2":
+	default:
+		return m.applyMenuDigit(msg.String(), 1)
+	}
+}
+
+func (m Model) goMenu() (tea.Model, tea.Cmd) {
+	m.screen = screenMenu
+	m.err = ""
+	return m.blurCalc(), nil
+}
+
+func (m Model) applyMenuDigit(digit string, start int) (tea.Model, tea.Cmd) {
+	n, err := strconv.Atoi(digit)
+	if err != nil {
+		if digit == "q" {
+			return m, tea.Quit
+		}
+		return m, nil
+	}
+	idx := n - start
+	ids := m.menuItemIDs()
+	if idx < 0 || idx >= len(ids) {
+		return m, nil
+	}
+	return m.openMenuItem(ids[idx])
+}
+
+func (m Model) openMenu(key string) (tea.Model, tea.Cmd) {
+	if key == "q" {
+		return m, tea.Quit
+	}
+	if !m.setupDone {
+		if key == "1" {
+			m.ensureCalcInputs()
+			m.screen = screenMain
+			return m.focusCalcAt(0)
+		}
+		return m.applyMenuDigit(key, 2)
+	}
+	return m, nil
+}
+
+func (m Model) openMenuItem(id string) (tea.Model, tea.Cmd) {
+	switch id {
+	case "settings":
 		m.screen = screenSettings
 		m.settingsStep = 0
 		m.settingsLang = m.lang
 		m.inputs = nil
 		m.err = ""
 		return m, nil
-	case "3":
+	case "help":
 		m.screen = screenHelp
 		return m, nil
-	case "4":
+	case "setup":
 		if !m.setupDone {
 			m.screen = screenSetup
 			m.setupStep = 0
@@ -641,7 +692,7 @@ func (m Model) openMenu(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, nil
-	case "5":
+	case "update":
 		m.screen = screenUpdate
 		m.updateStatus = ""
 		m.err = ""
@@ -649,18 +700,18 @@ func (m Model) openMenu(key string) (tea.Model, tea.Cmd) {
 			return m.runOp(m.checkUpdate())
 		}
 		return m, nil
-	case "6":
+	case "branch":
 		m.screen = screenBranch
 		m.branchStatus = ""
 		m.err = ""
 		return m.runOp(m.fetchBranches())
-	case "7":
+	case "uninstall":
 		m.screen = screenUninstall
 		m.uninstallStep = 0
 		m.uninstallStatus = ""
 		m.err = ""
 		return m, nil
-	case "8":
+	case "report":
 		m.screen = screenReport
 		m.reportResult = ""
 		m.reportSubmitted = false
@@ -1626,6 +1677,8 @@ func (m Model) View() string {
 	switch m.screen {
 	case screenMain:
 		b.WriteString(m.viewMain())
+	case screenMenu:
+		b.WriteString(m.viewMenu())
 	case screenSetup:
 		b.WriteString(m.viewSetup())
 	case screenSettings:
@@ -1674,13 +1727,13 @@ func (m Model) View() string {
 
 func (m Model) viewMain() string {
 	if m.setupDone {
-		return m.viewFareCard() + "\n\n" + m.viewMainMenuKeys()
+		return m.viewFareCard() + "\n\n" + m.viewMenuLink()
 	}
 	var b strings.Builder
 	b.WriteString(subtitleStyle.Render(t(m.lang, "main_menu")))
 	b.WriteString("\n\n")
 	b.WriteString(keyStyle.Render("1") + t(m.lang, "main_calc") + "\n")
-	b.WriteString(m.viewMainMenuKeys())
+	b.WriteString(m.viewMenuItems(2))
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(t(m.lang, "main_select")))
 	return b.String()
@@ -1791,16 +1844,31 @@ func (m Model) viewHelp() string {
 	b.WriteString(m.pageHeader(t(m.lang, "help_title")))
 	b.WriteString("\n")
 	b.WriteString(t(m.lang, "help_controls") + "\n")
-	b.WriteString("  " + keyStyle.Render("1") + t(m.lang, "help_calc") + "\n")
-	b.WriteString("  " + keyStyle.Render("2") + t(m.lang, "help_settings") + "\n")
-	b.WriteString("  " + keyStyle.Render("3") + t(m.lang, "help_help") + "\n")
-	if !m.setupDone {
-		b.WriteString("  " + keyStyle.Render("4") + t(m.lang, "help_setup") + "\n")
+	b.WriteString("  " + t(m.lang, "help_home_title") + "\n")
+	b.WriteString("  " + keyStyle.Render("1") + t(m.lang, "help_menu") + "\n")
+	b.WriteString("  " + t(m.lang, "help_menu_title") + "\n")
+	n := 1
+	for _, id := range m.menuItemIDs() {
+		label := ""
+		switch id {
+		case "settings":
+			label = t(m.lang, "help_settings")
+		case "help":
+			label = t(m.lang, "help_help")
+		case "setup":
+			label = t(m.lang, "help_setup")
+		case "update":
+			label = t(m.lang, "help_update")
+		case "branch":
+			label = t(m.lang, "help_branch")
+		case "uninstall":
+			label = t(m.lang, "help_uninstall")
+		case "report":
+			label = t(m.lang, "help_report")
+		}
+		b.WriteString("  " + keyStyle.Render(strconv.Itoa(n)) + label + "\n")
+		n++
 	}
-	b.WriteString("  " + keyStyle.Render("5") + t(m.lang, "help_update") + "\n")
-	b.WriteString("  " + keyStyle.Render("6") + t(m.lang, "help_branch") + "\n")
-	b.WriteString("  " + keyStyle.Render("7") + t(m.lang, "help_uninstall") + "\n")
-	b.WriteString("  " + keyStyle.Render("8") + t(m.lang, "help_report") + "\n")
 	b.WriteString("  " + keyStyle.Render("q") + t(m.lang, "help_quit") + "\n")
 	b.WriteString("  " + keyStyle.Render("Tab") + t(m.lang, "help_tab") + "\n")
 	b.WriteString("  " + keyStyle.Render("Enter") + t(m.lang, "help_enter") + "\n")

@@ -87,8 +87,8 @@ taxiprijs/
 - All addresses limited to the Netherlands
 
 ## TUI Screens
-1. Main Menu - After setup: fare form (addresses + suggestions) on top, other options below
-2. Calculate Fare - Same form as the home screen (also reachable via menu 1)
+1. Home - After setup: fare form (addresses + suggestions). A `1 ▸ Menu` link opens the menu (click or press 1 after Esc)
+2. Menu - Numbered from 1: Settings, Help, Check for Updates, Switch Branch, Uninstall, Report Issue, q Quit. Esc/X returns home
 3. Settings - Language, Git/GitHub CLI/GitHub login (install + manage), then pricing rates
 4. Help/Manual - Keyboard controls and documentation
 5. Initial Setup - First-run: language, optional Git/GitHub CLI/GitHub login (N skips), then pricing
@@ -119,7 +119,7 @@ taxiprijs/
 
 ## Workflow
 1. First run: Initial Setup (language + optional Git/gh/GitHub + pricing)
-2. Main menu: select "Calculate Fare"
+2. Home screen: enter start and destination (fare form is already open)
 3. Enter start address (e.g. "Dam Square, Amsterdam")
 4. Enter destination (e.g. "Central Station, Rotterdam")
 5. Enter number of passengers (1-8)
@@ -201,11 +201,11 @@ taxiprijs/
   cwd, the running binary, git rev-parse, or ~/.taxiprijs/source-repo.
 - Switch between dev and stable branches from the TUI (e.g. v1.1.0)
 - Local changes stashed and restored automatically on branch switch
-- Two-step uninstall confirmation from the main menu
+- Two-step uninstall confirmation from the menu
 - Omarchy Quattro bar widget installed by `make install` (launches the TUI from the bar)
 - Windows `install-taxicheck-vVERSION-windows.exe` on GitHub releases (user-level install to %LOCALAPPDATA%\TaxiCheck)
 - Settings and first-run setup can install Git, install GitHub CLI (gh), open GitHub signup, and log in with gh (N skips during setup)
-- Report Issue from the main menu (option 8): description + error output, saved to a local
+- Report Issue from the menu (item 6): description + error output, saved to a local
   log at ~/.taxiprijs/logs/, and optionally filed on GitHub via the `gh` CLI. Works without
   gh/GitHub (falls back to local log only). Collects OS/distro/arch/kernel/Go info.
 

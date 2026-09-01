@@ -60,7 +60,8 @@ func TestMouseClickMainMenuOpensCalc(t *testing.T) {
 
 func TestMouseClickMainMenuQuit(t *testing.T) {
 	m := sized("en")
-	_, cmd := click(m, "Quit")
+	updated, _ := click(m, "Menu")
+	_, cmd := click(updated.(Model), "Quit")
 	if cmd == nil {
 		t.Fatal("clicking Quit should quit")
 	}
@@ -68,7 +69,8 @@ func TestMouseClickMainMenuQuit(t *testing.T) {
 
 func TestMouseRightClickGoesBack(t *testing.T) {
 	m := sized("en")
-	updated, _ := click(m, "Help")
+	updated, _ := click(m, "Menu")
+	updated, _ = click(updated.(Model), "Help")
 	if updated.(Model).screen != screenHelp {
 		t.Fatalf("setup: screen=%d", updated.(Model).screen)
 	}
@@ -85,7 +87,8 @@ func TestMouseRightClickGoesBack(t *testing.T) {
 
 func TestMouseClickUninstallYes(t *testing.T) {
 	m := sized("en")
-	updated, _ := click(m, "Uninstall")
+	updated, _ := click(m, "Menu")
+	updated, _ = click(updated.(Model), "Uninstall")
 	if updated.(Model).screen != screenUninstall {
 		t.Fatalf("screen=%d, want uninstall", updated.(Model).screen)
 	}
@@ -192,38 +195,39 @@ func TestMouseClickOffByOneStillHits(t *testing.T) {
 
 func TestMouseClickRowMarginHitsKey(t *testing.T) {
 	m := sized("en")
-	_, y := findText(m, "Settings")
+	_, y := findText(m, "Menu")
 	updated, _ := m.Update(tea.MouseMsg{
 		X:      0,
 		Y:      y,
 		Action: tea.MouseActionPress,
 		Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenSettings {
-		t.Fatalf("margin click screen=%d, want settings", updated.(Model).screen)
+	if updated.(Model).screen != screenMenu {
+		t.Fatalf("margin click screen=%d, want menu", updated.(Model).screen)
 	}
 }
 
 func TestMousePressThenReleaseDoesNotDouble(t *testing.T) {
 	m := sized("en")
-	x, y := findText(m, "Settings")
+	x, y := findText(m, "Menu")
 	updated, _ := m.Update(tea.MouseMsg{
 		X: x, Y: y, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenSettings {
-		t.Fatal("press should open settings")
+	if updated.(Model).screen != screenMenu {
+		t.Fatal("press should open the menu")
 	}
 	updated, _ = updated.Update(tea.MouseMsg{
 		X: x, Y: y, Action: tea.MouseActionRelease, Button: tea.MouseButtonLeft,
 	})
-	if updated.(Model).screen != screenSettings {
-		t.Fatalf("release after press should not leave settings, screen=%d", updated.(Model).screen)
+	if updated.(Model).screen != screenMenu {
+		t.Fatalf("release after press should not leave the menu, screen=%d", updated.(Model).screen)
 	}
 }
 
 func TestCloseXReturnsToMain(t *testing.T) {
 	m := sized("en")
-	updated, _ := click(m, "Settings")
+	updated, _ := click(m, "Menu")
+	updated, _ = click(updated.(Model), "Settings")
 	if updated.(Model).screen != screenSettings {
 		t.Fatal("need settings")
 	}
@@ -241,9 +245,37 @@ func TestCloseXReturnsToMain(t *testing.T) {
 
 func TestMouseClickSettings(t *testing.T) {
 	m := sized("en")
-	updated, _ := click(m, "Settings")
+	updated, _ := click(m, "Menu")
+	updated, _ = click(updated.(Model), "Settings")
 	if updated.(Model).screen != screenSettings {
 		t.Fatalf("screen=%d view:\n%s", updated.(Model).screen, ansi.Strip(m.View()))
+	}
+}
+
+func TestHomeMenuLinkAndMenuNumbers(t *testing.T) {
+	m := sized("en")
+	home := ansi.Strip(m.View())
+	if !strings.Contains(home, "▸") || !strings.Contains(home, "Menu") {
+		t.Fatalf("home should show a ▸ Menu link:\n%s", home)
+	}
+	if strings.Contains(home, "2 Settings") || strings.Contains(home, "3 Help") {
+		t.Fatalf("home must not list the numbered menu:\n%s", home)
+	}
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
+	mm := updated.(Model)
+	if mm.screen != screenMenu {
+		t.Fatalf("1 should open the menu, screen=%d", mm.screen)
+	}
+	menu := ansi.Strip(mm.View())
+	if !strings.Contains(menu, "1 Settings") {
+		t.Fatalf("menu should start at 1 Settings:\n%s", menu)
+	}
+	if strings.Contains(menu, "2 Settings") {
+		t.Fatalf("settings must not be 2:\n%s", menu)
+	}
+	if !strings.Contains(menu, "2 Help") || !strings.Contains(menu, "3 Check for Updates") {
+		t.Fatalf("menu numbering off:\n%s", menu)
 	}
 }
 
