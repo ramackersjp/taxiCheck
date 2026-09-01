@@ -68,7 +68,7 @@ func LoadEnv() {
 
 	userAgent = os.Getenv("USER_AGENT")
 	if userAgent == "" {
-		userAgent = "TaxiCheck/1.1 (https://github.com/ramackersjp/taxiCheck)"
+		userAgent = "TaxiCheck/2.0 (https://github.com/ramackersjp/taxiCheck)"
 	}
 }
 

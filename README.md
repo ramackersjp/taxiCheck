@@ -17,7 +17,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Unicode block art taxi logo
 - Version display in main menu
 - Check for updates from GitHub
-- Windows installer (`install-taxicheck-v1.1.0-windows.exe`) on GitHub releases
+- Windows installer (`install-taxicheck-v2.0.0-windows.exe`) on GitHub releases
 - Settings / first-run setup can install Git and GitHub CLI and log in to GitHub
 - Pull updates directly from the TUI (the app is rebuilt and the new binary is installed automatically)
 - Switch between dev and stable branches from the TUI
@@ -33,7 +33,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 You do not need Go, Git, or a compiler. Install with the Windows installer from the GitHub release:
 
 1. Open the **[latest GitHub release](https://github.com/ramackersjp/taxiCheck/releases/latest)**.
-2. Download **[install-taxicheck-v1.1.0-windows.exe](https://github.com/ramackersjp/taxiCheck/releases/download/v1.1.0/install-taxicheck-v1.1.0-windows.exe)**.
+2. Download **[install-taxicheck-v2.0.0-windows.exe](https://github.com/ramackersjp/taxiCheck/releases/download/v2.0.0/install-taxicheck-v2.0.0-windows.exe)**.
 3. Double-click the file. If Windows SmartScreen says the app is unrecognized, click **More info** and then **Run anyway** (the installer is not code-signed).
 4. The installer copies TaxiCheck to `%LOCALAPPDATA%\TaxiCheck`, adds that folder to your user PATH, and creates a Start Menu shortcut.
 5. Start **TaxiCheck** from the Start Menu, or open a **new** terminal (Windows Terminal, PowerShell, or Command Prompt) and run:
@@ -45,12 +45,12 @@ taxiprijs
 Silent install (no prompts):
 
 ```text
-install-taxicheck-v1.1.0-windows.exe /S
+install-taxicheck-v2.0.0-windows.exe /S
 ```
 
 Uninstall from **Settings → Apps**, or run `%LOCALAPPDATA%\TaxiCheck\uninstall.exe`.
 
-To rebuild the installer from source: `make build-windows-installer` (writes `dist/install-taxicheck-v1.1.0-windows.exe`).
+To rebuild the installer from source: `make build-windows-installer` (writes `dist/install-taxicheck-v2.0.0-windows.exe`).
 
 ### From Source
 
@@ -59,7 +59,7 @@ For a normal install you get the **latest stable release** by explicitly checkin
 ```bash
 git clone https://github.com/ramackersjp/taxiCheck.git
 cd taxiCheck
-git checkout v1.1.0   # latest stable release
+git checkout v2.0.0   # latest stable release
 cp .env.example .env
 ```
 
@@ -168,9 +168,9 @@ On the menu page, numbering starts at 1:
 1. Open **Menu**, then press **4** (Switch Branch)
 2. Use ↑/↓ to select a branch
 3. Press **Space** to switch to the selected branch
-4. Available branches: `dev` and all stable release branches (e.g. `v1.1.0`)
+4. Available branches: `dev` and all stable release branches (e.g. `v2.0.0`)
 
-You can switch to a **stable release** (for example `v1.1.0`) and back to
+You can switch to a **stable release** (for example `v2.0.0`) and back to
 `dev` at any time. Feature branches are intentionally not listed. If a release branch
 is not yet checked out locally, the app creates it automatically from the remote.
 
@@ -230,7 +230,7 @@ remote: the issue is simply saved locally.
 | Branch | Purpose | Stability |
 |--------|---------|-----------|
 | `dev` | Development (GitHub default) | Chaotic, unstable, may break at any time |
-| `v1.1.0` | Stable release | Current stable version, recommended for installs |
+| `v2.0.0` | Stable release | Current stable version, recommended for installs |
 | `main` | Production | Only merged from stable releases |
 
 > **Note:** The GitHub default branch is `dev` for development. For a normal install, check out the latest stable branch (as shown in [From Source](#from-source)) so you run a stable release. Use `dev` only if you want the latest in-development features.
@@ -254,7 +254,7 @@ NOMINATIM_URL=https://nominatim.openstreetmap.org
 PDOK_URL=https://api.pdok.nl/bzk/locatieserver/search/v3_1
 
 # User agent for API requests (required by Nominatim)
-USER_AGENT=TaxiCheck/1.1
+USER_AGENT=TaxiCheck/2.0
 ```
 
 ### Configuration File Location

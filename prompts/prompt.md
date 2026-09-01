@@ -94,7 +94,7 @@ taxiprijs/
 5. Initial Setup - First-run: language, optional Git/GitHub CLI/GitHub login (N skips), then pricing
 6. Result - Shows route info (distance, duration) and calculated fare
 7. Check for Updates - On stable branches compares the running version against the latest GitHub release; on dev compares the local branch with its remote (reports commits behind). Press `u` to pull, `r` to re-check
-8. Switch Branch - Switch between dev and stable branches (e.g. v1.1.0); local changes are stashed before the switch and restored after it
+8. Switch Branch - Switch between dev and stable branches (e.g. v2.0.0); local changes are stashed before the switch and restored after it
 9. Uninstall - Two-step confirmation, then removes the application
 10. Report Issue - Describe problem + paste error output; saved to local log
     (~/.taxiprijs/logs/) and optionally filed on GitHub via gh CLI
@@ -139,7 +139,7 @@ taxiprijs/
 ## Git Workflow
 ### Branch Strategy
 - `dev` - Development branch. **Chaotic, unstable, may break at any time.** All new features are developed here first. This is the **GitHub default branch** and the PR target. Not what you want for a production install.
-- `v1.1.0` - Stable release branch. This is the current stable version. Recommended for installs (documented `git checkout v1.1.0` in the README). Bug fixes only.
+- `v2.0.0` - Stable release branch. This is the current stable version. Recommended for installs (documented `git checkout v2.0.0` in the README). Bug fixes only.
 - `main` - Stable releases only. Never commit directly to `main`.
 - Fix branches - `fix/<short-description>` created from `dev` for bug fixes.
 - Feature branches - `feature/<short-description>` created from `dev` for new features (e.g. `feature/logo-and-uninstall-safety`).
@@ -153,7 +153,7 @@ taxiprijs/
 5. Never commit `.env` (contains API config)
 6. For new features, always branch from `dev`, not from stable releases
 7. The `dev` branch may be chaotic and unstable
-8. The stable release branch (currently `v1.1.0`) is for production use
+8. The stable release branch (currently `v2.0.0`) is for production use
 
 ## Dependencies
 - github.com/charmbracelet/bubbletea
@@ -199,7 +199,7 @@ taxiprijs/
 - Pull updates via git pull from the TUI; the binary is rebuilt and installed automatically
   (checkout, ~/.local/bin, and /usr/local/bin when writable). The source repo is found from
   cwd, the running binary, git rev-parse, or ~/.taxiprijs/source-repo.
-- Switch between dev and stable branches from the TUI (e.g. v1.1.0)
+- Switch between dev and stable branches from the TUI (e.g. v2.0.0)
 - Local changes stashed and restored automatically on branch switch
 - Two-step uninstall confirmation from the menu
 - Omarchy Quattro bar widget installed by `make install` (launches the TUI from the bar)
@@ -258,14 +258,14 @@ sudo cp taxiprijs /usr/local/bin/taxiprijs
 
 ### Windows
 
-Download `install-taxicheck-v1.1.0-windows.exe` from the GitHub release and
+Download `install-taxicheck-v2.0.0-windows.exe` from the GitHub release and
 run it (double-click). No Go or Git required. It installs to
 `%LOCALAPPDATA%\TaxiCheck`, adds that folder to the user PATH, and creates a
 Start Menu shortcut. Then start TaxiCheck from the Start Menu, or open a new
 terminal and run `taxiprijs`.
 
 ```sh
-make build-windows-installer   # dist/install-taxicheck-v1.1.0-windows.exe
+make build-windows-installer   # dist/install-taxicheck-v2.0.0-windows.exe
 make build-windows             # portable dist/taxiprijs-windows-amd64.exe
 ```
 

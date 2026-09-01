@@ -112,12 +112,12 @@ func TestMouseClickCalcF2(t *testing.T) {
 func TestMouseClickBranchSelects(t *testing.T) {
 	m := sized("en")
 	m.screen = screenBranch
-	m.branchList = []string{"dev", "v1.1.0"}
+	m.branchList = []string{"dev", "v2.0.0"}
 	m.currentBranch = "dev"
 	m.branchIdx = 0
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
 	m = updated.(Model)
-	updated, cmd := click(m, "v1.1.0")
+	updated, cmd := click(m, "v2.0.0")
 	mm := updated.(Model)
 	if mm.branchIdx != 1 {
 		t.Fatalf("branchIdx=%d, want 1; view:\n%s", mm.branchIdx, ansi.Strip(m.View()))
