@@ -3,9 +3,12 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/ramackersjp/taxiCheck/internal/config"
 )
@@ -157,6 +160,30 @@ func TestCalcValidationAndF2(t *testing.T) {
 	mm = tm.(Model)
 	if mm.routeMode != "shortest" {
 		t.Fatalf("routeMode=%q, want shortest", mm.routeMode)
+	}
+}
+
+func TestHeaderShowsDateTimeSourceLicense(t *testing.T) {
+	orig := nowFn
+	nowFn = func() time.Time { return time.Date(2026, 9, 1, 14, 32, 8, 0, time.UTC) }
+	defer func() { nowFn = orig }()
+	m := sized("en")
+	out := ansi.Strip(m.View())
+	for _, want := range []string{"TAXI", "TaxiCheck", "Date", "Time", "14:32:08", "github.com/ramackersjp/taxiCheck", "MIT", "J.P. Ramackers"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("header missing %q:\n%s", want, out)
+		}
+	}
+	h := m.viewHeader()
+	content := borderStyle.Width(m.contentWidth()).Render("x")
+	if lipgloss.Width(h) != lipgloss.Width(content) {
+		t.Fatalf("header width %d, content %d", lipgloss.Width(h), lipgloss.Width(content))
+	}
+	if lipgloss.Height(h) != lipgloss.Height(GetLogo()) {
+		t.Fatalf("info column height %d, logo %d", lipgloss.Height(h), lipgloss.Height(GetLogo()))
+	}
+	if lipgloss.Width(GetLogo()) != 19 {
+		t.Fatalf("logo box width %d, want 19", lipgloss.Width(GetLogo()))
 	}
 }
 

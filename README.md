@@ -14,7 +14,7 @@ A modern, lightweight terminal user interface (TUI) for calculating Dutch taxi f
 - Settings screen to modify pricing without editing files
 - English and Dutch language support
 - Clean, professional taxi-inspired UI with yellow borders
-- Unicode block art taxi logo
+- Unicode block art taxi logo (front view with TAXI sign) plus date, time, source, and license beside it
 - Version display in main menu
 - Check for updates from GitHub
 - Windows installer (`install-taxicheck-v2.0.0-windows.exe`) on GitHub releases
@@ -371,7 +371,7 @@ taxiprijs/
 │       ├── model.go             # Bubble Tea TUI
 │       ├── style.go             # Lip Gloss styling
 │       ├── lang.go              # EN/NL translations
-│       └── logo.go              # Unicode block art taxi logo
+│       └── logo.go              # Front-facing taxi logo + date/time/license column
 ├── extras/
 │   ├── taxiprijs.desktop        # Linux desktop entry
 │   └── omarchy-plugin/          # Omarchy Quattro bar widget

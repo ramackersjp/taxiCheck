@@ -20,6 +20,14 @@ var translations = map[string]map[string]string{
 		"main_more":      "Menu",
 		"calc_help_home": "Tab: next field | F2: route | Enter: calculate | 1: menu | Esc: blur",
 
+		"info_date":        "Date",
+		"info_time":        "Time",
+		"info_source":      "Source",
+		"info_source_val":  "github.com/ramackersjp/taxiCheck",
+		"info_license":     "License",
+		"info_license_val": "MIT",
+		"info_copyright":   "© 2024 J.P. Ramackers",
+
 		// Setup
 		"setup_title":       "Initial Setup",
 		"setup_lang_title":  "Select Language",
@@ -215,6 +223,14 @@ var translations = map[string]map[string]string{
 		"main_select":    "Kies een optie",
 		"main_more":      "Menu",
 		"calc_help_home": "Tab: volgend veld | F2: route | Enter: berekenen | 1: menu | Esc: velden loslaten",
+
+		"info_date":        "Datum",
+		"info_time":        "Tijd",
+		"info_source":      "Bron",
+		"info_source_val":  "github.com/ramackersjp/taxiCheck",
+		"info_license":     "Licentie",
+		"info_license_val": "MIT",
+		"info_copyright":   "© 2024 J.P. Ramackers",
 
 		// Setup
 		"setup_title":       "Installatie",

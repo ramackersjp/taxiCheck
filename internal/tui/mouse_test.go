@@ -41,6 +41,20 @@ func findText(m Model, substr string) (x, y int) {
 	return -1, -1
 }
 
+func findCloseX(m Model) (x, y int) {
+	lines := strings.Split(ansi.Strip(m.View()), "\n")
+	for i, line := range lines {
+		idx := strings.LastIndex(line, "X")
+		if idx < 0 {
+			continue
+		}
+		if clickIsClose(line, idx) {
+			return idx, i
+		}
+	}
+	return -1, -1
+}
+
 func TestMouseClickMainMenuOpensCalc(t *testing.T) {
 	m := sized("en")
 	if m.screen != screenMain {
@@ -231,7 +245,7 @@ func TestCloseXReturnsToMain(t *testing.T) {
 	if updated.(Model).screen != screenSettings {
 		t.Fatal("need settings")
 	}
-	x, y := findText(updated.(Model), "X")
+	x, y := findCloseX(updated.(Model))
 	if y < 0 {
 		t.Fatalf("missing close X:\n%s", ansi.Strip(updated.(Model).View()))
 	}
