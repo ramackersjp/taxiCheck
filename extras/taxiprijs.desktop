@@ -2,9 +2,9 @@
 Type=Application
 Name=TaxiCheck
 Comment=Taxi fare calculator with routing
-Exec=taxiprijs
+Exec=gnome-terminal --geometry=120x40 -- taxiprijs
 Icon=taxiprijs
-Terminal=true
+Terminal=false
 Categories=Utility;
 Keywords=taxi;fare;route;
 StartupNotify=false
